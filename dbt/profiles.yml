@@ -1,8 +1,8 @@
-querysherpa:
+sherpagent:
   target: dev
   outputs:
     dev:
       type: duckdb
-      path: "{{ env_var('QUERYSHERPA_WAREHOUSE', '../data/warehouse.duckdb') }}"
+      path: "{{ env_var('SHERPAGENT_WAREHOUSE', '../data/warehouse.duckdb') }}"
       schema: main
       threads: 4

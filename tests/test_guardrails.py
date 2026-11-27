@@ -24,6 +24,13 @@ UNSAFE = [
     "SELECT * FROM '/etc/passwd'",
     "SELECT * FROM information_schema.tables",
     "SELECT getenv('HOME')",
+    "SELECT json_execute_serialized_sql('x')",
+    "SELECT nextval('s')",
+    "SELECT repeat('a', 1000000000)",
+    "SELECT lpad('a', 1000000000, 'b')",
+    "SELECT range(1000000000)",
+    "SELECT some_unknown_function(1)",
+    "SELECT '/etc/passwd'.read_text()",
     "SELECT * FROM glob('*')",
     "SELECT email FROM analytics.dim_customer",
     "SELECT c.full_name FROM analytics.dim_customer c",
@@ -67,7 +74,7 @@ def test_slow_query_is_interrupted(db):
 SNEAKY = [
     "SELECT * FROM analytics.dim_customer",
     "SELECT c FROM analytics.dim_customer c",
-    "SELECT to_json(c) FROM analytics.dim_customer AS c",
+    "SELECT CAST(c AS VARCHAR) FROM analytics.dim_customer AS c",
     "SELECT * FROM analytics.dim_customer AS t(a, b, c, d, e)",
     "SELECT COLUMNS('.*') FROM analytics.dim_customer",
     "WITH x AS (SELECT * FROM analytics.dim_customer) SELECT * FROM x",
@@ -86,3 +93,8 @@ def test_serving_database_holds_only_published_data(db):
     assert schemas == [("analytics",)]
     _, columns = warehouse.run("SELECT column_name FROM information_schema.columns", db)
     assert not {"email", "full_name"} & {c[0] for c in columns}
+
+
+def test_very_long_text_is_cut_off(db):
+    _, rows = warehouse.run("SELECT array_to_string(list_value(product_name, product_name), repeat('x', 5000)) FROM analytics.dim_product LIMIT 1", db)
+    assert len(rows[0][0]) == warehouse.MAX_CELL

@@ -1,9 +1,9 @@
 PY := .venv/bin/python
 export DBT_SEND_ANONYMOUS_USAGE_STATS := false
 
-.PHONY: setup data test eval replay app api demo
+.PHONY: setup data test eval security replay app api demo
 setup:            ## create the virtual environment and install everything
-	python3 -m venv .venv && $(PY) -m pip install -q -r requirements-dev.txt
+	python3 -m venv .venv && $(PY) -m pip install -q --upgrade "pip>=26.2" && $(PY) -m pip install -q -r requirements-dev.txt
 data:             ## synthetic data -> dbt models and tests -> serving database
 	$(PY) -m analyst.seed
 	cd dbt && ../.venv/bin/dbt build --profiles-dir .
@@ -12,6 +12,9 @@ test:
 	$(PY) -m pytest -q
 eval:             ## live evaluation (needs OPENAI_API_KEY, makes ~40 model calls)
 	$(PY) -m analyst.evaluate
+security:         ## known vulnerabilities in dependencies, and risky code patterns
+	$(PY) -m pip_audit
+	.venv/bin/bandit -q -r analyst scripts
 replay:           ## re-score the recorded replies: free and deterministic
 	$(PY) -m analyst.evaluate --replay --min-accuracy 90
 app:

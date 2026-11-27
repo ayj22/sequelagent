@@ -1,9 +1,9 @@
-name: querysherpa
+name: sherpagent
 version: "1.0.0"
-profile: querysherpa
+profile: sherpagent
 model-paths: ["models"]
 models:
-  querysherpa:
+  sherpagent:
     staging:
       +materialized: view
       +schema: staging

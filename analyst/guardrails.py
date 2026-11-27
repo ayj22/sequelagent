@@ -12,6 +12,11 @@ from analyst.semantic import allowed_tables, pii_columns
 
 WRITES = (exp.Insert, exp.Update, exp.Delete, exp.Create, exp.Drop, exp.Alter, exp.Merge, exp.Command, exp.Copy, exp.Pragma,
           exp.Set, exp.Use, exp.Transaction, exp.Commit, exp.Rollback, exp.Attach, exp.Detach, exp.TruncateTable, exp.Into)
+# functions sqlglot does not recognise must be on this list; anything else unknown is refused
+ALLOWED_OTHER_FUNCTIONS = {"year", "month", "day", "quarter", "week", "dayname", "monthname", "date_part", "date_diff", "datediff",
+                           "date_trunc", "date_sub", "date_add", "strftime", "strptime", "make_date", "last_day", "today", "isodow",
+                           "dayofweek", "yearweek", "median", "mode", "quantile_cont", "quantile_disc", "arg_max", "arg_min",
+                           "max_by", "min_by", "count_if", "bool_and", "bool_or", "string_agg", "list", "fsum", "product"}
 BLOCKED_FUNCTIONS = ("read_", "glob", "getenv", "current_setting", "query", "which_secret", "duckdb_", "pragma_", "sniff_csv",
                      "parquet_", "iceberg_", "delta_", "sqlite_", "postgres_", "mysql_", "http", "load_", "install_")
 
@@ -54,11 +59,13 @@ def check(sql: str) -> str:
 
     for func in tree.find_all(exp.Func):
         fname = (func.name if isinstance(func, exp.Anonymous) else func.sql_name()).lower()
-        if fname.startswith(BLOCKED_FUNCTIONS):
+        if fname.startswith(BLOCKED_FUNCTIONS) or (isinstance(func, exp.Anonymous) and fname not in ALLOWED_OTHER_FUNCTIONS):
+            raise Blocked(f"The function '{fname}' is not allowed")
+        if isinstance(func, (exp.Repeat, exp.Pad, exp.GenerateSeries)):       # can build enormous values from nothing
             raise Blocked(f"The function '{fname}' is not allowed")
 
     pii = pii_columns()
     for node in tree.find_all(exp.Column, exp.Identifier):
         if node.name.lower() in pii:
             raise Blocked(f"'{node.name}' is personal data")
-    return f"SELECT * FROM (\n{tree.sql(dialect='duckdb')}\n) AS answer LIMIT {ROW_LIMIT}"
+    return f"SELECT * FROM (\n{tree.sql(dialect='duckdb')}\n) AS answer LIMIT {ROW_LIMIT}"  # rebuilt from the checked tree  # nosec B608

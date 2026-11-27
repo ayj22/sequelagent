@@ -1,14 +1,17 @@
 """HTTP API: POST /ask {"question": "..."}"""
+import hmac
+import os
 from functools import lru_cache
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from analyst import agent, semantic
 from analyst.config import DB_PATH, load_env, model_name
+from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 
-app = FastAPI(title="QuerySherpa", description="Ask a business question; get checked SQL and the answer.")
+app = FastAPI(title="SherpAgent", description="Ask a business question; get checked SQL and the answer.")
 
 
 class Question(BaseModel):
@@ -21,6 +24,18 @@ def get_model():
     return OpenAIModel(model_name())
 
 
+limiter = RateLimit(calls=30, seconds=60)
+
+
+def guard(authorization: str = Header(default="")) -> None:
+    """Optional shared token (set SHERPAGENT_API_TOKEN) and a limit on how often the model can be called."""
+    token = os.environ.get("SHERPAGENT_API_TOKEN", "")
+    if token and not hmac.compare_digest(authorization.encode(), f"Bearer {token}".encode()):
+        raise HTTPException(401, "Missing or wrong token")
+    if not limiter.allow():
+        raise HTTPException(429, "Too many questions: wait a minute")
+
+
 @app.get("/health")
 def health():
     return {"ok": DB_PATH.exists()}
@@ -31,7 +46,7 @@ def metrics():
     return semantic.layer()["metrics"]
 
 
-@app.post("/ask")
+@app.post("/ask", dependencies=[Depends(guard)])
 def ask(body: Question, model=Depends(get_model)):
     try:
         return agent.ask(body.question, model).to_dict()

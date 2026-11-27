@@ -3,12 +3,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -35,6 +39,9 @@ class OpenAIModel:
         self.record_to = record_to
         self.key = os.environ.get("OPENAI_API_KEY", "")
         self.base = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+        address = urlparse(self.base)
+        if address.scheme != "https" and address.hostname not in ("localhost", "127.0.0.1", "::1"):
+            raise ModelError("OPENAI_BASE_URL must use https, so the key is never sent in the clear")
         self.client = client or httpx.Client(timeout=90)
         if not self.key:
             raise ModelError("OPENAI_API_KEY is not set (copy .env.example to .env)")
@@ -52,7 +59,9 @@ class OpenAIModel:
                 if r.status_code == 200:
                     break
                 if r.status_code not in (429, 500, 502, 503) or attempt == 3:
-                    raise ModelError(f"The model API answered {r.status_code}: {r.json().get('error', {}).get('message', '')[:200]}")
+                    # the provider's message can quote parts of the key, so it is neither shown nor logged
+                    log.warning("model API answered %s", r.status_code)
+                    raise ModelError(f"The model service refused the request (status {r.status_code}). Check the API key and model name.")
             time.sleep(2 ** attempt)
         data = r.json()
         usage = data.get("usage") or {}

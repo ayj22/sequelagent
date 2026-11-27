@@ -19,10 +19,10 @@ tables:
       gross_margin: net revenue minus product cost; 0 for returned lines
   dim_store:
     grain: one row per store
-    columns: {store_id: id, store_name: name, region: "'Northeast', 'South', 'Midwest' or 'West'", state: two-letter code, store_format: "'mall', 'street' or 'outlet'", opened_date: DATE}
+    columns: {store_id: id, store_name: 'neighbourhood or centre name, e.g. SoHo', city: text, region: "'Northeast', 'South', 'Midwest' or 'West'", state: two-letter code, store_format: "'mall', 'street' or 'outlet'", opened_date: DATE}
   dim_product:
     grain: one row per product
-    columns: {product_id: id, product_name: name, category: "'Footwear', 'Apparel', 'Accessories' or 'Outdoor'", subcategory: text, brand: text, list_price: price, unit_cost: cost}
+    columns: {product_id: id, product_name: 'brand, model and colour', category: "'Footwear', 'Apparel', 'Accessories' or 'Outdoor'", subcategory: text, brand: 'for example Ridgeline, Northfield or Summitcraft', list_price: price, unit_cost: cost}
   dim_customer:
     grain: one row per customer
     columns: {customer_id: id, state: two-letter code, segment: "'value', 'core' or 'premium'", loyalty_tier: "'none', 'silver' or 'gold'", signup_date: DATE}

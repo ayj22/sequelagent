@@ -1,6 +1,6 @@
 """Start the app, type real questions in a headless browser, and save screenshots and an animated GIF to docs/."""
 import io
-import subprocess
+import subprocess  # starts this project's own app  # nosec B404
 import sys
 import time
 import urllib.request
@@ -22,7 +22,7 @@ QUESTIONS = [("region", "What was net revenue by region last quarter?", "A busin
 def wait_for(url: str, seconds: int = 60) -> None:
     for _ in range(seconds):
         try:
-            urllib.request.urlopen(url, timeout=2)
+            urllib.request.urlopen(url, timeout=2)  # a fixed http://localhost address  # nosec B310
             return
         except OSError:
             time.sleep(1)
@@ -47,7 +47,8 @@ def captioned(png: bytes, caption: str) -> Image.Image:
 
 def main() -> None:
     DOCS.mkdir(exist_ok=True)
-    server = subprocess.Popen([sys.executable, "-m", "streamlit", "run", str(ROOT / "analyst" / "app.py"), "--server.headless", "true",
+    server = subprocess.Popen(  # fixed arguments  # nosec B603
+        [sys.executable, "-m", "streamlit", "run", str(ROOT / "analyst" / "app.py"), "--server.headless", "true",
                                "--server.port", str(PORT)], cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     frames: list[tuple[Image.Image, int]] = []      # (picture, milliseconds on screen)
     try:
@@ -56,7 +57,7 @@ def main() -> None:
             browser = p.chromium.launch(channel="chrome", headless=True)
             page = browser.new_page(viewport={"width": SIZE[0], "height": SIZE[1]}, color_scheme="light")
             page.goto(f"http://localhost:{PORT}", wait_until="networkidle")
-            box = page.get_by_label("Your question")
+            box = page.get_by_label("Ask your AI analyst")
             box.wait_for()
             time.sleep(1.5)
 
@@ -65,7 +66,7 @@ def main() -> None:
                 frames.append((captioned(png, caption), ms))
                 return png
 
-            (DOCS / "home.png").write_bytes(snap("Meet QuerySherpa: ask your data in plain English", 3500))
+            (DOCS / "home.png").write_bytes(snap("Meet SherpAgent: ask your data in plain English", 3500))
             for number, (name, question, caption) in enumerate(QUESTIONS, 1):
                 title = f"{number} of {len(QUESTIONS)} · {caption}"
                 if number > 1:                                   # each question starts from a clean screen

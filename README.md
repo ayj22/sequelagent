@@ -1,28 +1,31 @@
-# 🧭 QuerySherpa
+# 🧭 SherpAgent
 
-**Ask a business question in plain English. Get checked SQL, a chart and the answer, with a scorecard that says how often to trust it.**
+**An AI analyst agent for business data. Ask in plain English; it plans the analysis, writes the SQL, checks it, runs it,
+fixes its own errors and explains the answer, with a scorecard that says how often to trust it.**
 
-![QuerySherpa demo: typed questions answered with charts and SQL, and a destructive request refused](docs/demo.gif)
+[![ci](https://github.com/ayj22/sherpagent/actions/workflows/ci.yml/badge.svg)](https://github.com/ayj22/sherpagent/actions/workflows/ci.yml)
+
+![SherpAgent demo: typed questions answered with charts and SQL, and a destructive request refused](docs/demo.gif)
 
 *A one-minute walkthrough, recorded from the running app with live model calls.*
 
-Most text-to-SQL demos stop at "the model wrote a query". QuerySherpa is built around the parts that decide whether such a tool
+Most text-to-SQL demos stop at "the model wrote a query". SherpAgent is built around the parts that decide whether such a tool
 can be used at work: shared metric definitions, treating the model as untrusted, and measuring accuracy and safety on every change.
 
 | | Latest run (`gpt-6-luna`) |
 |---|---|
 | Correct answers | 30 of 30 |
 | Unsafe or unanswerable requests handled safely | 10 of 10 |
-| Median time per question | 1.5 s |
-| Tokens per question | about 1,030 in, 140 out |
+| Median time per question | 1.7 s |
+| Tokens per question | about 1,060 in, 140 out |
 
 Read [what these numbers do and don't mean](#evaluation) before quoting them. Full results: [SCORECARD.md](evals/results/SCORECARD.md).
 
 ## Demo
 
-**Start here**: type a question or pick an example.
+**Start here**: the latest month at a glance, then type a question or pick an example.
 
-![Home screen with a question box and example questions](docs/home.png)
+![Business overview with headline numbers, a question box and example questions](docs/home.png)
 
 | Question | What you get |
 |---|---|
@@ -63,8 +66,11 @@ flowchart LR
     PUB --> D
 ```
 
-- **Data**: a synthetic retail business (24 stores, 120 products, 4,000 customers, about 76,000 order lines, inventory and
-  marketing spend). It is generated from a fixed seed, so results are reproducible. No real people or companies.
+- **Data**: Cedar Ridge Outfitters, an **invented** outdoor and apparel retailer: 24 stores, 172 products, 8 brands, 24,000
+  customers, about 146,000 orders and 277,000 order lines from January 2025 to September 2026, plus monthly inventory and weekly
+  marketing spend. It behaves like a real business (holiday and back-to-school peaks, weekend traffic, seasonal products, a
+  growing online share, higher online returns, loyalty customers who buy more). Sales, products and customers are made up;
+  the place names are real. It is generated from a fixed seed.
 - **Modeling**: dbt on DuckDB, with uniqueness, not-null, relationship and accepted-value tests.
 - **Semantic layer**: [`semantic/metrics.yaml`](semantic/metrics.yaml) is the single definition of each metric ("revenue" means
   net revenue; stock is a snapshot and is never summed across months). The prompt is generated from it.
@@ -81,7 +87,17 @@ The model is treated as untrusted. Four independent layers stand between its out
 2. **SQL checks** ([`guardrails.py`](analyst/guardrails.py)): the query is parsed into a syntax tree. Only one `SELECT` over listed
    tables is allowed; writes, settings changes, table functions, file and system functions and personal column names are refused.
 3. **Locked database**: read-only connection, no file or network access, settings locked, memory limit.
-4. **Limits**: 500 rows, 15 seconds, 500-character questions, two repair attempts.
+4. **Limits**: 500 rows, 2,000 characters per value, 15 seconds, 500-character questions, two repair attempts, and a cap on
+   how many questions can be asked per minute.
+
+Around the model:
+
+- Text written by the model is shown as plain text, so it cannot place links or images on the screen.
+- CSV downloads neutralise spreadsheet formulas.
+- Provider error messages are never shown or logged, and the key is sent only over HTTPS.
+- The API accepts an optional shared token (`SHERPAGENT_API_TOKEN`).
+- CI scans the whole git history for secrets, audits dependencies for known vulnerabilities and runs a static code scan, on
+  every push and weekly. Details: [SECURITY.md](SECURITY.md).
 
 In live runs the model usually refuses bad requests itself, so layers 2 to 4 are tested directly, with hostile SQL that bypasses
 the model ([`tests/test_guardrails.py`](tests/test_guardrails.py)).
@@ -110,7 +126,8 @@ Results from the live runs made while building:
 | 1 | 29 of 30 | 10 of 10 | Miss: "revenue by region" included online orders, which have no region, as an extra empty row |
 | 2 | 30 of 30 | 9 of 10 | The model ran an injected `SELECT *` on the customer table. The result held no personal data (layer 1) |
 | 3 | 30 of 30 | 10 of 10 | |
-| 4 | 30 of 30 | 10 of 10 | The recorded run behind the scorecard, after the region rule below |
+| 4 | 30 of 30 | 10 of 10 | After the region rule below |
+| 5 | 30 of 30 | 10 of 10 | New, larger dataset. The recorded run behind the scorecard |
 
 - The run 1 miss happened again while recording the demo. A rule was then added to the semantic layer ("leave online orders out
   of breakdowns by region"). Run 4 therefore uses a prompt improved with knowledge of a test question.
@@ -139,13 +156,14 @@ Other entry points:
 make api                                                   # POST /ask on http://localhost:8000/docs
 .venv/bin/python -m analyst.cli "Average order value by loyalty tier in 2026"
 make test
+make security                                              # dependency audit and code scan
 ```
 
 Docker:
 
 ```bash
-docker build -t querysherpa .
-docker run -p 8501:8501 -e OPENAI_API_KEY querysherpa
+docker build -t sherpagent .
+docker run -p 8501:8501 -e OPENAI_API_KEY sherpagent
 ```
 
 AWS notes: [deploy/aws.md](deploy/aws.md) (written, not yet run against a live account).

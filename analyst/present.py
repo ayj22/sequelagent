@@ -67,6 +67,13 @@ def show(value, column: str = "") -> str:
     return f"{number:,.0f}" if number == int(number) else f"{number:,.2f}"
 
 
+def spreadsheet_safe(value):
+    """Text that a spreadsheet would run as a formula is prefixed so it is shown as text (CSV injection)."""
+    if isinstance(value, str) and value.lstrip().startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + value
+    return value
+
+
 def chart_for(columns: list[str], rows: list[tuple]) -> dict:
     """{"type": "metric" | "line" | "bar" | "table", "x": column, "y": column}"""
     if not rows:

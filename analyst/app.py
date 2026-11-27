@@ -10,8 +10,9 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from analyst import agent, present, semantic
+from analyst import agent, overview, present, semantic, warehouse
 from analyst.config import ROOT, load_env, model_name
+from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 
 EXAMPLES = [("💰", "Revenue", "What was net revenue by region last quarter?"),
@@ -20,20 +21,24 @@ EXAMPLES = [("💰", "Revenue", "What was net revenue by region last quarter?"),
             ("↩️", "Returns", "Compare return rate by channel"),
             ("📦", "Inventory", "How many units are on hand right now?"),
             ("🛡️", "Safety test", "Delete all orders from 2025")]
-STEPS = {"writing": "✍️  Writing the query", "checking": "🛡️  Checking it is safe", "running": "⚡  Running it",
-         "repairing": "🔧  Fixing the query"}
+STEPS = {"writing": "🧠  Planning the analysis and writing SQL", "checking": "🛡️  Reviewing the query against safety rules",
+         "running": "⚡  Querying the warehouse", "repairing": "🔧  That failed: correcting the query"}
+COMPANY = "Cedar Ridge Outfitters"
 ACCENT = "#4F46E5"
 
 STYLE = """
 <style>
 .block-container {max-width: 1060px; padding-top: 2.2rem; padding-bottom: 3rem;}
 header[data-testid="stHeader"] {background: transparent;}
-.hero {background: linear-gradient(120deg, #312E81 0%, #4F46E5 55%, #0EA5E9 100%); color: #fff; border-radius: 18px;
-       padding: 26px 30px; margin-bottom: 18px;}
-.hero h1 {color: #fff; font-size: 2rem; margin: 0 0 6px 0; padding: 0;}
-.hero p {margin: 0; opacity: .92; font-size: 1.02rem;}
-.flow {display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;}
-.flow span {background: rgba(255,255,255,.16); border-radius: 999px; padding: 4px 12px; font-size: .82rem;}
+.bar {display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px;}
+.bar .co {font-size: 1.55rem; font-weight: 750; color: #14162B; line-height: 1.2;}
+.bar .sub {color: #5B5F7A; font-size: .9rem;}
+.pill {background: #EEF2FF; color: #3730A3; border-radius: 999px; padding: 6px 14px; font-size: .82rem; font-weight: 600;}
+.kpis {display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px;}
+@media (max-width: 800px) {.kpis {grid-template-columns: repeat(2, minmax(0, 1fr));}}
+.kpi {background: #fff; border: 1px solid #E6E8F2; border-radius: 14px; padding: 14px 16px;}
+.kpi .l {color: #5B5F7A; font-size: .8rem;} .kpi .n {font-size: 1.6rem; font-weight: 750; color: #14162B;}
+.kpi .d {font-size: .76rem; color: #5B5F7A;} .up {color: #047857; font-weight: 700;} .down {color: #B91C1C; font-weight: 700;}
 .card {background: #fff; border: 1px solid #E6E8F2; border-radius: 16px; padding: 18px 22px; margin: 6px 0 12px 0;}
 .card .tag {font-size: .74rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px;}
 .card .text {font-size: 1.18rem; line-height: 1.5;}
@@ -56,9 +61,9 @@ div[data-testid="stTextInput"] input {font-size: 1.08rem;}
 </style>
 """
 
-st.set_page_config(page_title="QuerySherpa", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SherpAgent · Cedar Ridge Outfitters", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
 load_env()
-st.markdown(STYLE, unsafe_allow_html=True)
+st.html(STYLE)
 
 
 @st.cache_resource
@@ -67,14 +72,43 @@ def model():
 
 
 def card(kind: str, tag: str, text: str) -> None:
-    st.markdown(f'<div class="card {kind}"><div class="tag">{html.escape(tag)}</div><div class="text">{html.escape(text)}</div></div>',
-                unsafe_allow_html=True)
+    # st.html, not markdown: text from the model must never become a link or an image that calls out to another site
+    st.html(f'<div class="card {kind}"><div class="tag">{html.escape(tag)}</div><div class="text">{html.escape(text)}</div></div>')
+
+
+def change(value: float | None, unit: str, against: str) -> str:
+    if value is None:
+        return ""
+    direction, arrow = ("up", "▲") if value >= 0 else ("down", "▼")
+    return f'<span class="{direction}">{arrow} {abs(value):.1f}{unit}</span> vs {against}'
+
+
+@st.cache_data
+def headline() -> dict:
+    return overview.headline()
+
+
+def header() -> None:
+    try:
+        data = headline()
+    except (FileNotFoundError, warehouse.QueryError):
+        st.error("The data is not built yet. Run `make data`, then reload.")
+        st.stop()
+    month = data["month"].strftime("%B %Y")
+    tiles = ""
+    for m in data["metrics"]:
+        unit = " pts" if m["name"].endswith("_pct") else "%"
+        tiles += (f'<div class="kpi"><div class="l">{html.escape(present.label(m["name"]))}</div>'
+                  f'<div class="n">{html.escape(present.show(m["value"], m["name"]))}</div>'
+                  f'<div class="d">{change(m["vs_previous"], unit, "last month")}<br>{change(m["vs_year_ago"], unit, "last year")}</div></div>')
+    st.html(f'<div class="bar"><div><div class="co">{COMPANY}</div><div class="sub">Business overview · {month}</div></div>'
+            f'<div class="pill">🧭 SherpAgent · your AI analyst</div></div><div class="kpis">{tiles}</div>')
 
 
 def sidebar() -> None:
     with st.sidebar:
-        st.markdown("## 🧭 QuerySherpa")
-        st.caption("Your guide from a question to a trusted number. The data is a made-up retail business, Jan 2025 to Sep 2026.")
+        st.markdown("## 🧭 SherpAgent")
+        st.caption("An AI analyst that plans, writes, checks and runs the query for you. Demo company with fictional data, Jan 2025 to Sep 2026.")
         score = ROOT / "evals" / "results" / "latest.json"
         if score.exists():
             s = json.loads(score.read_text())
@@ -95,8 +129,9 @@ def draw(a: agent.Answer) -> None:
     kind = a.chart.get("type")
     if len(a.rows) == 1:
         for column, (name, value) in zip(st.columns(len(a.columns)), zip(a.columns, a.rows[0])):
-            column.markdown(f'<div class="big"><div class="l">{html.escape(present.label(name))}</div>'
-                            f'<div class="n">{html.escape(present.show(value, name))}</div></div>', unsafe_allow_html=True)
+            with column:
+                st.html(f'<div class="big"><div class="l">{html.escape(present.label(name))}</div>'
+                        f'<div class="n">{html.escape(present.show(value, name))}</div></div>')
         return
     if kind in ("bar", "line"):
         x, y = a.chart["x"], a.chart["y"]
@@ -119,14 +154,15 @@ def draw(a: agent.Answer) -> None:
     table = pd.DataFrame({present.label(c): [present.show(r[i], c) for r in a.rows] for i, c in enumerate(a.columns)})
     with st.expander(f"Table ({len(table)} rows)", expanded=kind == "table"):
         st.dataframe(table, hide_index=True, width="stretch")
-        st.download_button("Download CSV", frame.to_csv(index=False), "answer.csv", "text/csv")
+        safe = frame.rename(columns=present.spreadsheet_safe).map(present.spreadsheet_safe)
+        st.download_button("Download CSV", safe.to_csv(index=False), "answer.csv", "text/csv")
 
 
 def show_answer(a: agent.Answer) -> None:
     if a.status == "answered":
         card("ok", "Answer", a.message)
-        st.markdown('<div class="checks"><span>✓ Read-only query</span><span>✓ Approved tables only</span>'
-                    '<span>✓ No personal data</span></div>', unsafe_allow_html=True)
+        st.html('<div class="checks"><span>✓ Read-only query</span><span>✓ Approved tables only</span>'
+                '<span>✓ No personal data</span></div>')
         draw(a)
     elif a.status == "refused":
         card("warn", "Not answered", a.message)
@@ -149,21 +185,24 @@ def pick(question: str) -> None:
 
 
 sidebar()
-st.markdown('<div class="hero"><h1>Ask your data anything</h1><p>Type a business question in plain English. Get the number, '
-            'a chart and the query behind it.</p><div class="flow"><span>1 · You ask</span><span>2 · AI writes SQL</span>'
-            '<span>3 · Safety checks</span><span>4 · You get the answer</span></div></div>', unsafe_allow_html=True)
+header()
 
 with st.form("ask", clear_on_submit=False, border=True):
     left, right = st.columns([6, 1], vertical_alignment="bottom")
-    left.text_input("Your question", key="question", placeholder="e.g. Average order value by loyalty tier in 2026",
+    left.text_input("Ask your AI analyst", key="question", placeholder="e.g. Average order value by loyalty tier in 2026",
                     max_chars=agent.MAX_QUESTION)
     if right.form_submit_button("Ask →", type="primary", width="stretch"):
         st.session_state.pending = st.session_state.question
 
 question = st.session_state.pop("pending", None)
 if question and question.strip():
+    limit = st.session_state.setdefault("limit", RateLimit(calls=20, seconds=600))
+    if not limit.allow():
+        st.warning("That is a lot of questions in a short time. Please wait a few minutes.")
+        question = ""
+if question and question.strip():
     try:
-        with st.status("Working on it…", expanded=True) as status:
+        with st.status("SherpAgent is working…", expanded=True) as status:
             a = agent.ask(question, model(), on_step=lambda step: status.write(STEPS[step]))
             status.update(label="Done", state="complete", expanded=False)
         st.session_state.answer = a
