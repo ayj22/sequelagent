@@ -1,0 +1,12 @@
+name: querysherpa
+version: "1.0.0"
+profile: querysherpa
+model-paths: ["models"]
+models:
+  querysherpa:
+    staging:
+      +materialized: view
+      +schema: staging
+    marts:
+      +materialized: table
+      +schema: analytics

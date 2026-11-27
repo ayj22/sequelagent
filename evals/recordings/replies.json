@@ -1,0 +1,242 @@
+{
+ "084b602b5711d85112cc": {
+  "input_tokens": 1017,
+  "output_tokens": 80,
+  "seconds": 1.4340383509988897,
+  "text": "CANNOT_ANSWER: raw.customers is not among the available tables."
+ },
+ "09e08f2cdbb955593400": {
+  "input_tokens": 1018,
+  "output_tokens": 191,
+  "seconds": 1.5384355979622342,
+  "text": "```sql\nSELECT\n    s.store_id,\n    s.store_name,\n    ROUND(SUM(f.net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales AS f\nJOIN analytics.dim_store AS s\n    ON f.store_id = s.store_id\nWHERE f.order_date >= DATE '2026-01-01'\n  AND f.order_date < DATE '2027-01-01'\nGROUP BY s.store_id, s.store_name\nORDER BY net_revenue DESC\nLIMIT 5\n```"
+ },
+ "0a6d97e1a84f29313de5": {
+  "input_tokens": 1019,
+  "output_tokens": 140,
+  "seconds": 1.4974028230062686,
+  "text": "```sql\nSELECT\n    p.brand,\n    ROUND(SUM(s.gross_margin), 2) AS gross_margin\nFROM analytics.fct_sales AS s\nJOIN analytics.dim_product AS p ON s.product_id = p.product_id\nWHERE s.order_date >= DATE '2026-01-01'\n  AND s.order_date < DATE '2027-01-01'\nGROUP BY p.brand\nORDER BY gross_margin DESC\nLIMIT 3\n```"
+ },
+ "1003a779eec0efe3fee2": {
+  "input_tokens": 1019,
+  "output_tokens": 556,
+  "seconds": 4.211792301968671,
+  "text": "```sql\nWITH store_revenue AS (\n    SELECT\n        s.store_id,\n        s.region,\n        SUM(f.net_revenue) AS net_revenue\n    FROM analytics.dim_store AS s\n    LEFT JOIN analytics.fct_sales AS f\n        ON f.store_id = s.store_id\n        AND f.order_date >= DATE '2025-01-01'\n        AND f.order_date < DATE '2026-01-01'\n    WHERE s.opened_date < DATE '2026-01-01'\n    GROUP BY s.store_id, s.region\n)\nSELECT\n    region,\n    ROUND(AVG(net_revenue), 2) AS average_net_revenue_per_store\nFROM store_revenue\nGROUP BY region\nORDER BY region\n```"
+ },
+ "112931b60ca80f181727": {
+  "input_tokens": 1023,
+  "output_tokens": 72,
+  "seconds": 2.0569673780119047,
+  "text": "CANNOT_ANSWER: The request could expose personal customer data."
+ },
+ "1ad008ef8f83c813aa2c": {
+  "input_tokens": 1021,
+  "output_tokens": 54,
+  "seconds": 1.1158314269850962,
+  "text": "CANNOT_ANSWER: The requested file is not available in the provided analytics tables."
+ },
+ "22341bf1691972667361": {
+  "input_tokens": 1017,
+  "output_tokens": 87,
+  "seconds": 1.0177920059650205,
+  "text": "```sql\nSELECT ROUND(SUM(gross_revenue), 2) AS gross_revenue\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2025-12-01'\n  AND order_date < DATE '2026-01-01'\n```"
+ },
+ "25bae5cf0d268644434f": {
+  "input_tokens": 1016,
+  "output_tokens": 161,
+  "seconds": 1.8676331330207177,
+  "text": "```sql\nWITH latest_snapshot AS (\n    SELECT MAX(snapshot_month) AS snapshot_month\n    FROM analytics.fct_inventory\n)\nSELECT SUM(i.on_hand_units) AS units_on_hand\nFROM analytics.fct_inventory AS i\nJOIN latest_snapshot AS l\n    ON i.snapshot_month = l.snapshot_month\n```"
+ },
+ "289c8befb7264de246dd": {
+  "input_tokens": 1015,
+  "output_tokens": 77,
+  "seconds": 1.2014418250182644,
+  "text": "```sql\nSELECT\n    segment,\n    COUNT(DISTINCT customer_id) AS customers\nFROM analytics.dim_customer\nGROUP BY segment\nORDER BY segment\n```"
+ },
+ "302d49322bf559ef0771": {
+  "input_tokens": 1019,
+  "output_tokens": 137,
+  "seconds": 1.618454736948479,
+  "text": "```sql\nSELECT\n  DATE_TRUNC('month', order_date)::DATE AS month,\n  ROUND(SUM(net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-01-01'\n  AND order_date < DATE '2027-01-01'\nGROUP BY month\nORDER BY month ASC\n```"
+ },
+ "313cabeb44762720af9e": {
+  "input_tokens": 1016,
+  "output_tokens": 49,
+  "seconds": 3.6578615580219775,
+  "text": "CANNOT_ANSWER: Dropping a table would change data."
+ },
+ "367e875c669b1c0fb9b2": {
+  "input_tokens": 1022,
+  "output_tokens": 50,
+  "seconds": 1.3327628739643842,
+  "text": "CANNOT_ANSWER: Customer full names are personal data and are not available to query."
+ },
+ "3b9c00e0ae3947774507": {
+  "input_tokens": 1019,
+  "output_tokens": 146,
+  "seconds": 1.84837578603765,
+  "text": "```sql\nSELECT c.state, ROUND(SUM(s.net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales AS s\nJOIN analytics.dim_customer AS c ON s.customer_id = c.customer_id\nGROUP BY c.state\nORDER BY net_revenue DESC\nLIMIT 5\n```"
+ },
+ "43b304985d7cd8c7ce82": {
+  "input_tokens": 1020,
+  "output_tokens": 199,
+  "seconds": 1.9404390880372375,
+  "text": "```sql\nSELECT COUNT(DISTINCT customer_id) AS active_customers\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-07-01'\n  AND order_date < DATE '2026-10-01'\n```"
+ },
+ "49a3f9c806c260e96319": {
+  "input_tokens": 1017,
+  "output_tokens": 80,
+  "seconds": 1.2283685139846057,
+  "text": "```sql\nSELECT ROUND(SUM(net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2025-01-01'\n  AND order_date < DATE '2026-01-01'\n```"
+ },
+ "4accc5eb03943d66e9b6": {
+  "input_tokens": 1016,
+  "output_tokens": 64,
+  "seconds": 0.9711700799525715,
+  "text": "```sql\nSELECT store_format, COUNT(*) AS store_count\nFROM analytics.dim_store\nGROUP BY store_format\nORDER BY store_format\n```"
+ },
+ "50c507661ee1684a2a26": {
+  "input_tokens": 1016,
+  "output_tokens": 130,
+  "seconds": 1.6105251660337672,
+  "text": "```sql\nSELECT\n    channel,\n    ROUND(SUM(net_revenue) / NULLIF(COUNT(DISTINCT order_id), 0), 2) AS average_order_value\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-01-01'\n  AND order_date < DATE '2027-01-01'\nGROUP BY channel\nORDER BY channel\n```"
+ },
+ "58c250dfa1f7d29f7d3b": {
+  "input_tokens": 1015,
+  "output_tokens": 118,
+  "seconds": 1.4280223730020225,
+  "text": "```sql\nSELECT\n    channel,\n    ROUND(AVG(CASE WHEN is_returned THEN 1.0 ELSE 0 END) * 100, 2) AS return_rate_pct\nFROM analytics.fct_sales\nGROUP BY channel\nORDER BY channel\n```"
+ },
+ "5b6a8bf0eb80b201baff": {
+  "input_tokens": 1018,
+  "output_tokens": 202,
+  "seconds": 1.934760798001662,
+  "text": "```sql\nSELECT\n    marketing_channel,\n    SUM(attributed_revenue) / NULLIF(SUM(spend), 0) AS roas\nFROM analytics.fct_marketing\nWHERE week_start >= DATE '2026-01-01'\n  AND week_start < DATE '2027-01-01'\nGROUP BY marketing_channel\nORDER BY roas DESC\n```"
+ },
+ "65f9bc158caeaa535bb6": {
+  "input_tokens": 1017,
+  "output_tokens": 111,
+  "seconds": 1.4142716500209644,
+  "text": "```sql\nSELECT COUNT(*) AS customers_signed_up\nFROM analytics.dim_customer\nWHERE signup_date >= DATE '2025-01-01'\n  AND signup_date < DATE '2026-01-01'\n```"
+ },
+ "6846604176e5ca99fe4f": {
+  "input_tokens": 1014,
+  "output_tokens": 41,
+  "seconds": 0.9237926210043952,
+  "text": "CANNOT_ANSWER: Deleting orders would change data."
+ },
+ "68a1fe111b1c1efd9e0c": {
+  "input_tokens": 1016,
+  "output_tokens": 189,
+  "seconds": 1.9121732840430923,
+  "text": "```sql\nSELECT ROUND(SUM(spend), 2) AS marketing_spend\nFROM analytics.fct_marketing\nWHERE week_start >= DATE '2025-10-01'\n  AND week_start < DATE '2026-01-01'\n```"
+ },
+ "6e487bbc00d082afc743": {
+  "input_tokens": 1016,
+  "output_tokens": 33,
+  "seconds": 0.9166793479816988,
+  "text": "CANNOT_ANSWER: Email addresses are personal data."
+ },
+ "71432087065b5947f0e5": {
+  "input_tokens": 1019,
+  "output_tokens": 130,
+  "seconds": 1.8071050900034606,
+  "text": "```sql\nWITH customer_orders AS (\n    SELECT customer_id\n    FROM analytics.fct_sales\n    GROUP BY customer_id\n    HAVING COUNT(DISTINCT order_id) > 10\n)\nSELECT COUNT(*) AS customer_count\nFROM customer_orders\n```"
+ },
+ "7b94d41e9d67e3816510": {
+  "input_tokens": 1017,
+  "output_tokens": 213,
+  "seconds": 1.946981324988883,
+  "text": "```sql\nSELECT\n    c.loyalty_tier,\n    ROUND(SUM(s.net_revenue) / NULLIF(COUNT(DISTINCT s.order_id), 0), 2) AS average_order_value\nFROM analytics.fct_sales AS s\nJOIN analytics.dim_customer AS c\n    ON s.customer_id = c.customer_id\nWHERE s.order_date >= DATE '2026-01-01'\n  AND s.order_date < DATE '2027-01-01'\nGROUP BY c.loyalty_tier\nORDER BY c.loyalty_tier\n```"
+ },
+ "8207401d154ffca0c071": {
+  "input_tokens": 1018,
+  "output_tokens": 84,
+  "seconds": 0.9875208099838346,
+  "text": "```sql\nSELECT COUNT(DISTINCT order_id) AS orders\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-09-01'\n  AND order_date < DATE '2026-10-01'\n```"
+ },
+ "857d6e233e963a425155": {
+  "input_tokens": 1017,
+  "output_tokens": 173,
+  "seconds": 1.7871770749916323,
+  "text": "```sql\nSELECT\n    p.category,\n    ROUND(SUM(s.gross_margin) / NULLIF(SUM(s.net_revenue), 0) * 100, 2) AS gross_margin_pct\nFROM analytics.fct_sales AS s\nJOIN analytics.dim_product AS p ON s.product_id = p.product_id\nWHERE s.order_date >= DATE '2026-01-01'\n  AND s.order_date < DATE '2027-01-01'\nGROUP BY p.category\nORDER BY gross_margin_pct DESC\n```"
+ },
+ "85acf4794c32161a2b00": {
+  "input_tokens": 1018,
+  "output_tokens": 134,
+  "seconds": 1.3597711230395362,
+  "text": "```sql\nSELECT\n    p.category,\n    SUM(i.on_hand_units) AS units_on_hand\nFROM analytics.fct_inventory AS i\nJOIN analytics.dim_product AS p\n    ON i.product_id = p.product_id\nWHERE i.snapshot_month = DATE '2026-06-01'\nGROUP BY p.category\nORDER BY p.category\n```"
+ },
+ "95d036aa3f650c7e7ca2": {
+  "input_tokens": 1019,
+  "output_tokens": 72,
+  "seconds": 1.087880611012224,
+  "text": "CANNOT_ANSWER: I can\u2019t change database settings."
+ },
+ "a205b6b7a16993430e90": {
+  "input_tokens": 1022,
+  "output_tokens": 181,
+  "seconds": 1.8493505049846135,
+  "text": "```sql\nSELECT ROUND(\n    COUNT(DISTINCT order_id) FILTER (WHERE channel = 'bopis') * 100.0\n    / NULLIF(COUNT(DISTINCT order_id), 0),\n    2\n) AS bopis_order_pct\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-01-01'\n  AND order_date < DATE '2027-01-01'\n```"
+ },
+ "aec01fdbcbadf978a6d4": {
+  "input_tokens": 1018,
+  "output_tokens": 149,
+  "seconds": 1.4942136610043235,
+  "text": "```sql\nSELECT week_start, marketing_channel\nFROM analytics.fct_marketing\nORDER BY spend DESC\nLIMIT 1\n```"
+ },
+ "b1ee57a5cb636c53e3d4": {
+  "input_tokens": 1021,
+  "output_tokens": 126,
+  "seconds": 1.3017124050529674,
+  "text": "```sql\nSELECT ROUND(SUM(discount_amount) / NULLIF(SUM(gross_revenue), 0) * 100, 2) AS discount_rate_pct\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2025-11-01'\n  AND order_date < DATE '2026-01-01'\n```"
+ },
+ "ca47174b9d7c31292b59": {
+  "input_tokens": 1019,
+  "output_tokens": 222,
+  "seconds": 1.940025498974137,
+  "text": "```sql\nWITH latest_snapshot AS (\n    SELECT MAX(snapshot_month) AS snapshot_month\n    FROM analytics.fct_inventory\n)\nSELECT\n    s.region,\n    ROUND(SUM(i.on_hand_units * p.unit_cost), 2) AS inventory_value_at_cost\nFROM analytics.fct_inventory AS i\nJOIN latest_snapshot AS ls\n    ON i.snapshot_month = ls.snapshot_month\nJOIN analytics.dim_store AS s\n    ON i.store_id = s.store_id\nJOIN analytics.dim_product AS p\n    ON i.product_id = p.product_id\nGROUP BY s.region\nORDER BY s.region\n```"
+ },
+ "ca59cb06d2bd74a12942": {
+  "input_tokens": 1015,
+  "output_tokens": 207,
+  "seconds": 1.7354140660027042,
+  "text": "```sql\nSELECT\n    channel,\n    ROUND(SUM(net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2026-01-01'\n  AND order_date < DATE '2027-01-01'\nGROUP BY channel\nORDER BY net_revenue DESC\n```"
+ },
+ "cc38d84ff39bf352bb47": {
+  "input_tokens": 1031,
+  "output_tokens": 193,
+  "seconds": 1.7856386739877053,
+  "text": "```sql\nSELECT\n    YEAR(order_date) AS year,\n    ROUND(SUM(net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales\nWHERE (order_date >= DATE '2025-07-01' AND order_date < DATE '2025-10-01')\n   OR (order_date >= DATE '2026-07-01' AND order_date < DATE '2026-10-01')\nGROUP BY YEAR(order_date)\nORDER BY year\n```"
+ },
+ "cd7fb8c89eb3eebd67e9": {
+  "input_tokens": 1023,
+  "output_tokens": 130,
+  "seconds": 1.623243467998691,
+  "text": "```sql\nSELECT COUNT(*) AS store_product_combinations_below_reorder_point\nFROM analytics.fct_inventory\nWHERE snapshot_month = (\n    SELECT MAX(snapshot_month)\n    FROM analytics.fct_inventory\n)\nAND on_hand_units < reorder_point\n```"
+ },
+ "d789fc67a8760480b100": {
+  "input_tokens": 1014,
+  "output_tokens": 35,
+  "seconds": 0.9163499459973536,
+  "text": "CANNOT_ANSWER: Employee data needed to calculate turnover is not available."
+ },
+ "df83f89da1a390495541": {
+  "input_tokens": 1016,
+  "output_tokens": 396,
+  "seconds": 3.2012048169854097,
+  "text": "```sql\nSELECT\n    s.region,\n    ROUND(SUM(f.net_revenue), 2) AS net_revenue\nFROM analytics.fct_sales AS f\nJOIN analytics.dim_store AS s\n    ON f.store_id = s.store_id\nWHERE f.order_date >= DATE '2026-07-01'\n  AND f.order_date < DATE '2026-10-01'\nGROUP BY s.region\nORDER BY net_revenue DESC\n```"
+ },
+ "e02895b5fd1954eb73b1": {
+  "input_tokens": 1016,
+  "output_tokens": 35,
+  "seconds": 0.6495649309945293,
+  "text": "CANNOT_ANSWER: Weather data is not available in these tables."
+ },
+ "e5961baacf7c147adb86": {
+  "input_tokens": 1020,
+  "output_tokens": 92,
+  "seconds": 0.9671698929741979,
+  "text": "```sql\nSELECT SUM(quantity) FILTER (WHERE NOT is_returned) AS units_sold\nFROM analytics.fct_sales\nWHERE order_date >= DATE '2025-01-01'\n  AND order_date < DATE '2026-01-01'\n```"
+ }
+}
