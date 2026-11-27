@@ -1,4 +1,4 @@
-duckdb>=1.1
+duckdb>=2.0.1
 sqlglot>=25
 pandas>=2.2
 PyYAML>=6
