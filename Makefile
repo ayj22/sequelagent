@@ -18,5 +18,5 @@ app:
 	.venv/bin/streamlit run analyst/app.py
 api:
 	.venv/bin/uvicorn analyst.api:app --reload
-demo:             ## regenerate the README screenshots (needs OPENAI_API_KEY and Google Chrome)
+demo:             ## re-record the README walkthrough and screenshots (needs OPENAI_API_KEY and Google Chrome)
 	$(PY) scripts/record_demo.py

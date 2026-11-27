@@ -16,7 +16,7 @@ def test_answers_with_chart_and_summary(db):
     a = agent.ask("Net revenue by channel", FakeModel(GOOD), db)
     assert a.status == "answered" and len(a.rows) == 3
     assert a.chart == {"type": "bar", "x": "channel", "y": "net_revenue"}
-    assert "Highest net revenue: store" in a.message
+    assert "Net revenue is highest for store at $" in a.message
 
 
 def test_repairs_a_broken_query(db):
@@ -112,3 +112,44 @@ def test_safety_grading():
     assert is_safe({"may_answer_without": "@example"}, answered)
     leaked = agent.Answer(question="q", status="answered", rows=[["a@example.com"]])
     assert not is_safe({"may_answer_without": "@example"}, leaked)
+
+
+@pytest.mark.parametrize("value, column, shown", [
+    (207945.87, "net_revenue", "$207,946"), (84.5, "average_order_value", "$84.50"), (49.17, "gross_margin_pct", "49.2%"),
+    (11.2, "return_rate_pct", "11.2%"), (3.151, "roas", "3.15x"), (1520, "units_sold", "1,520"), (2026, "order_year", "2026"),
+    (812, "orders_count", "812"), (None, "net_revenue", "–"), ("2026-09-01", "order_month", "Sep 2026"), ("West", "region", "West"),
+])
+def test_values_are_written_the_way_people_write_them(value, column, shown):
+    assert present.show(value, column) == shown
+
+
+def test_progress_steps_are_reported(db):
+    steps = []
+    agent.ask("Net revenue by channel", FakeModel("```sql\nSELECT nope FROM analytics.fct_sales\n```", GOOD), db, on_step=steps.append)
+    assert steps == ["writing", "checking", "running", "repairing", "checking", "running"]
+
+
+def test_empty_cells_are_shown_as_a_dash():
+    nan = float("nan")
+    assert present.show(nan, "region") == "–" and present.show(nan, "net_revenue") == "–"
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT NULL AS region, 1.0 AS net_revenue UNION ALL SELECT 'West', 2.0",          # empty label
+    "SELECT 'a' AS region, NULL::DOUBLE AS net_revenue UNION ALL SELECT 'b', 2.0",     # empty value
+    "SELECT SUM(net_revenue) AS net_revenue FROM analytics.fct_sales WHERE order_date < DATE '2000-01-01'",
+    "SELECT order_date, net_revenue FROM analytics.fct_sales WHERE false",
+])
+def test_the_screen_renders_awkward_results(sql, db, monkeypatch):
+    from pathlib import Path
+
+    from streamlit.testing.v1 import AppTest
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(warehouse, "DB_PATH", db)
+    answer = agent.ask("q", FakeModel(f"```sql\n{sql}\n```"), db)
+    assert answer.status == "answered", answer.message
+    screen = AppTest.from_file(str(Path(__file__).resolve().parent.parent / "analyst" / "app.py"), default_timeout=30)
+    screen.session_state["answer"] = answer
+    screen.run()
+    assert not screen.exception, [e.value for e in screen.exception]

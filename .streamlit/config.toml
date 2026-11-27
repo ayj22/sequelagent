@@ -1,0 +1,18 @@
+[theme]
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#F7F8FC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#14162B"
+font = "sans-serif"
+baseRadius = "0.75rem"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"      # people see a short message, not a traceback
+
+[browser]
+gatherUsageStats = false
+
+[server]
+address = "localhost"      # not reachable from the network; the Dockerfile overrides this

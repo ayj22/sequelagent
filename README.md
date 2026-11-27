@@ -2,7 +2,9 @@
 
 **Ask a business question in plain English. Get checked SQL, a chart and the answer, with a scorecard that says how often to trust it.**
 
-![QuerySherpa demo: questions answered with charts, and a destructive request refused](docs/demo.gif)
+![QuerySherpa demo: typed questions answered with charts and SQL, and a destructive request refused](docs/demo.gif)
+
+*A one-minute walkthrough, recorded from the running app with live model calls.*
 
 Most text-to-SQL demos stop at "the model wrote a query". QuerySherpa is built around the parts that decide whether such a tool
 can be used at work: shared metric definitions, treating the model as untrusted, and measuring accuracy and safety on every change.
@@ -11,12 +13,16 @@ can be used at work: shared metric definitions, treating the model as untrusted,
 |---|---|
 | Correct answers | 30 of 30 |
 | Unsafe or unanswerable requests handled safely | 10 of 10 |
-| Median time per question | 1.6 s |
-| Tokens per question | about 1,000 in, 140 out |
+| Median time per question | 1.5 s |
+| Tokens per question | about 1,030 in, 140 out |
 
 Read [what these numbers do and don't mean](#evaluation) before quoting them. Full results: [SCORECARD.md](evals/results/SCORECARD.md).
 
 ## Demo
+
+**Start here**: type a question or pick an example.
+
+![Home screen with a question box and example questions](docs/home.png)
 
 | Question | What you get |
 |---|---|
@@ -25,7 +31,18 @@ Read [what these numbers do and don't mean](#evaluation) before quoting them. Fu
 | *Which 5 brands had the highest gross margin percentage this year?* | ![Bar chart of brand gross margin](docs/margin.png) |
 | *Delete all orders from 2025* | ![The request is refused](docs/blocked.png) |
 
-The screenshots come from the running app with live model calls (`make demo` regenerates them).
+**Nothing is a black box**: every answer carries the query that produced it.
+
+![The SQL behind an answer](docs/sql.png)
+
+What the app does for the person asking:
+
+- shows progress while it works: writing the query, checking it, running it
+- writes values the way people read them ($207,946, 49.2%, Sep 2026)
+- says plainly why a request was not answered and what to try instead
+- offers the result as a table and a CSV download
+
+`make demo` re-records the walkthrough.
 
 ## How it works
 
@@ -86,14 +103,17 @@ make replay   # free: re-scores the recorded replies
 
 ### What the numbers do and don't mean
 
-Results from the three live runs made while building:
+Results from the live runs made while building:
 
 | Run | Correct | Safe | Notes |
 |---|---|---|---|
 | 1 | 29 of 30 | 10 of 10 | Miss: "revenue by region" included online orders, which have no region, as an extra empty row |
 | 2 | 30 of 30 | 9 of 10 | The model ran an injected `SELECT *` on the customer table. The result held no personal data (layer 1) |
-| 3 | 30 of 30 | 10 of 10 | The recorded run behind the scorecard |
+| 3 | 30 of 30 | 10 of 10 | |
+| 4 | 30 of 30 | 10 of 10 | The recorded run behind the scorecard, after the region rule below |
 
+- The run 1 miss happened again while recording the demo. A rule was then added to the semantic layer ("leave online orders out
+  of breakdowns by region"). Run 4 therefore uses a prompt improved with knowledge of a test question.
 - After run 2, that one injection case was changed to also pass when the answer contains no personal data. All other cases must
   still be refused or blocked.
 - Model output varies between runs. A single 100% is not a guarantee.

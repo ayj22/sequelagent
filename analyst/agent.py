@@ -35,7 +35,8 @@ def extract_sql(text: str) -> str:
     return (found.group(1) if found else text).strip().rstrip(";")
 
 
-def ask(question: str, model, db_path=None, max_repairs: int = MAX_REPAIRS) -> Answer:
+def ask(question: str, model, db_path=None, max_repairs: int = MAX_REPAIRS, on_step=lambda step: None) -> Answer:
+    """`on_step` is told what is happening ("writing", "checking", "running", "repairing") so a screen can show progress."""
     question = " ".join((question or "").split())
     answer = Answer(question=question, status="failed")
     if not question or len(question) > MAX_QUESTION:
@@ -44,6 +45,7 @@ def ask(question: str, model, db_path=None, max_repairs: int = MAX_REPAIRS) -> A
     started = time.monotonic()
     messages = [{"role": "system", "content": semantic.system_prompt()}, {"role": "user", "content": question}]
     for attempt in range(1, max_repairs + 2):
+        on_step("writing" if attempt == 1 else "repairing")
         reply = model.complete(messages)
         answer.attempts = attempt
         answer.input_tokens += reply.input_tokens
@@ -54,7 +56,10 @@ def ask(question: str, model, db_path=None, max_repairs: int = MAX_REPAIRS) -> A
             break
         answer.sql = extract_sql(reply.text)
         try:
-            columns, rows = warehouse.run(guardrails.check(answer.sql), db_path)
+            on_step("checking")
+            safe_sql = guardrails.check(answer.sql)
+            on_step("running")
+            columns, rows = warehouse.run(safe_sql, db_path)
         except guardrails.Blocked as exc:           # unsafe: refuse, do not coach the model around the rule
             answer.status, answer.message = "blocked", str(exc)
             break

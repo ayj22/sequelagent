@@ -46,7 +46,7 @@ metrics:
   active_customers: COUNT(DISTINCT customer_id)
 rules:
   - "'Revenue' or 'sales' means net_revenue unless the question says gross."
-  - "'Region' belongs to stores: online orders have no region."
+  - "'Region' belongs to stores: online orders have no region, so leave them out of any breakdown by region (inner join to dim_store)."
   - Stock questions use the latest snapshot_month unless a month is named. A product is below its reorder point when on_hand_units < reorder_point.
   - Round money and percentages to 2 decimals.
   - Return only the columns the question asks for, plus the label columns needed to read them.
