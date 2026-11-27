@@ -33,7 +33,8 @@ When a query fails, the agent reads the error and tries to repair it.
 ## Why it exists
 
 Most text-to-SQL demos stop at "the model wrote a query". SequelAgent is built around the parts that decide whether such a tool
-can be used at work: shared metric definitions, treating the model as untrusted, and measuring accuracy and safety on every change.
+can be used at work: shared metric definitions, treating the model as untrusted, and scoring accuracy and safety against a fixed
+question set.
 
 | | Latest run (`gpt-6-luna`) |
 |---|---|
@@ -201,7 +202,7 @@ scripts/     demo recorder
 
 ## Limitations and next steps
 
-- No login or rate limiting: do not expose the app publicly as it is.
+- No user login, and only simple rate limits: do not expose the app publicly as it is.
 - Single question, no follow-ups ("now split that by channel").
 - The whole schema goes into the prompt; a large warehouse would need table retrieval first.
 - Next: a harder question set with ambiguous wording, model-by-model comparison, and a Snowflake adapter.

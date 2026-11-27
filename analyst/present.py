@@ -26,13 +26,13 @@ def column_kind(name: str) -> str:
         return "plain"
     if n.endswith(("month", "date", "week_start", "_week")):
         return "date"
-    if re.search(r"pct|percent|share|(return|discount|margin)_rate", n):
+    if re.search(r"pct|percent|share|(return|discount|margin|fill|on_time|customer)_rate|sell_through(_rate)?$", n):
         return "percent"
     if "roas" in n or "ratio" in n:
         return "ratio"
-    if re.search(r"orders?_?count|num_|count|units|customers|stores|quantity|combinations", n):
+    if re.search(r"orders?_?count|num_|count|units|pairs|customers|stores|quantity|combinations", n):
         return "plain"
-    if re.search(r"revenue|margin|spend|value|price|cost|sales|discount_amount|aov|amount", n):
+    if re.search(r"revenue|margin|spend|value|price|msrp|cost|sales|discount_amount|aov|amount", n):
         return "money"
     return "plain"
 

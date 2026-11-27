@@ -3,14 +3,17 @@ import sys
 
 from analyst import agent
 from analyst.config import load_env, model_name
-from analyst.llm import OpenAIModel
+from analyst.llm import ModelError, OpenAIModel
 
 
 def main() -> None:
     load_env()
     if len(sys.argv) < 2:
         sys.exit('usage: python -m analyst.cli "your question"')
-    a = agent.ask(" ".join(sys.argv[1:]), OpenAIModel(model_name()))
+    try:
+        a = agent.ask(" ".join(sys.argv[1:]), OpenAIModel(model_name()))
+    except (ModelError, FileNotFoundError) as exc:
+        sys.exit(str(exc))
     print(f"[{a.status}] {a.message}")
     if a.sql:
         print("\n" + a.sql + "\n")

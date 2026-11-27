@@ -22,7 +22,10 @@ class Question(BaseModel):
 @lru_cache(maxsize=1)
 def get_model():
     load_env()
-    return OpenAIModel(model_name())
+    try:
+        return OpenAIModel(model_name())
+    except ModelError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 limiter = RateLimit(calls=30, seconds=60)

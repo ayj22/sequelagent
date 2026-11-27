@@ -1,6 +1,7 @@
 """Run a checked query on a locked-down, read-only connection with a time limit."""
 from __future__ import annotations
 
+import math
 import threading
 
 import duckdb
@@ -25,6 +26,18 @@ def connect(path=None) -> duckdb.DuckDBPyConnection:
                                   "autoinstall_known_extensions": False, "autoload_known_extensions": False, "lock_configuration": True})
 
 
+def _clean(value):
+    """Values the screen and the API can always carry: text is cut off, lists and other nested values become cut-off text, and
+    infinity or not-a-number become empty."""
+    if isinstance(value, str):
+        return value[:MAX_CELL]
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, (list, tuple, dict, set, bytes, bytearray)):
+        return str(value)[:MAX_CELL]
+    return value
+
+
 def run(sql: str, path=None, timeout_s: float = TIMEOUT_S) -> tuple[list[str], list[tuple]]:
     con = connect(path)
     timer = threading.Timer(timeout_s, con.interrupt)
@@ -32,7 +45,7 @@ def run(sql: str, path=None, timeout_s: float = TIMEOUT_S) -> tuple[list[str], l
         timer.start()
         cursor = con.execute(sql)
         columns = [d[0] for d in cursor.description]
-        return columns, [tuple(v[:MAX_CELL] if isinstance(v, str) else v for v in row) for row in cursor.fetchall()]
+        return columns, [tuple(_clean(v) for v in row) for row in cursor.fetchall()]
     except duckdb.InterruptException as exc:
         raise QueryError(f"The query ran longer than {timeout_s:.0f} seconds") from exc
     except duckdb.Error as exc:

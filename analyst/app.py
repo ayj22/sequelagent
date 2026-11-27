@@ -34,8 +34,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .bar .co {font-size: 1.55rem; font-weight: 750; color: #14162B; line-height: 1.2;}
 .bar .sub {color: #5B5F7A; font-size: .9rem;}
 .pill {background: #EEF2FF; color: #3730A3; border-radius: 999px; padding: 6px 14px; font-size: .82rem; font-weight: 600;}
-.kpis {display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px;}
-@media (max-width: 800px) {.kpis {grid-template-columns: repeat(2, minmax(0, 1fr));}}
+.kpis {display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 12px; margin-bottom: 16px;}
 .kpi {background: #fff; border: 1px solid #E6E8F2; border-radius: 14px; padding: 14px 16px;}
 .kpi .l {color: #5B5F7A; font-size: .8rem;} .kpi .n {font-size: 1.6rem; font-weight: 750; color: #14162B;}
 .kpi .d {font-size: .76rem; color: #5B5F7A;} .up {color: #047857; font-weight: 700;} .down {color: #B91C1C; font-weight: 700;}
@@ -51,10 +50,9 @@ header[data-testid="stHeader"] {background: transparent;}
 .big .n {font-size: 2.6rem; font-weight: 750; color: #312E81; line-height: 1.15;}
 .big .l {color: #5B5F7A; font-size: .9rem;}
 div[data-testid="stButton"] button {width: 100%; text-align: left; justify-content: flex-start; background: #fff; border: 1px solid #E0E3F0;
-       min-height: 64px;}
+       min-height: 88px; height: auto;}
 div[data-testid="stButton"] button p {white-space: normal; text-align: left; line-height: 1.4;}
 div[data-testid="stButton"] button > div {justify-content: flex-start; width: 100%;}
-div[data-testid="stButton"] button {height: 88px;}
 div[data-testid="stButton"] button:hover {border-color: #4F46E5; box-shadow: 0 4px 14px rgba(79,70,229,.14);}
 div[data-testid="stForm"] {background: #fff; border: 1px solid #E6E8F2; border-radius: 16px;}
 div[data-testid="stTextInput"] input {font-size: 1.08rem;}

@@ -158,7 +158,8 @@ def test_safety_grading():
 @pytest.mark.parametrize("value, column, shown", [
     (207945.87, "net_revenue", "$207,946"), (84.5, "average_order_value", "$84.50"), (49.17, "gross_margin_pct", "49.2%"),
     (11.2, "return_rate_pct", "11.2%"), (3.151, "roas", "3.15x"), (1520, "units_sold", "1,520"), (2026, "order_year", "2026"),
-    (812, "orders_count", "812"), (None, "net_revenue", "–"), ("2026-09-01", "order_month", "Sep 2026"), ("West", "region", "West"),
+    (812, "orders_count", "812"), (5111, "pairs_short", "5,111"), (1200, "sales_pairs", "1,200"), (95, "msrp", "$95.00"),
+    (94.53, "fill_rate", "94.5%"), (75.4, "on_time_rate", "75.4%"), (31.2, "sell_through", "31.2%"), (8.1, "weeks_of_supply", "8.10"), (None, "net_revenue", "–"), ("2026-09-01", "order_month", "Sep 2026"), ("West", "region", "West"),
 ])
 def test_values_are_written_the_way_people_write_them(value, column, shown):
     assert present.show(value, column) == shown

@@ -201,6 +201,12 @@ def build(seed: int = 11) -> dict[str, pd.DataFrame]:
                 if store is not None and not returned:
                     sold[(day.replace(day=1), store, index, size)] += quantity
 
+    # nobody shops before signing up: a customer's signup date is never later than their first order
+    for order in orders:                                    # orders are in date order
+        customer = customers[order["customer_id"] - 1]
+        if order["order_date"] < customer["signup_date"]:
+            customer["signup_date"] = order["order_date"]
+
     # month-end stock for every store, product and size: demand times weeks of cover, short in the middle sizes
     inventory = []
     total_traffic = sum(traffic)

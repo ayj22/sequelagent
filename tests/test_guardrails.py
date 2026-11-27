@@ -1,6 +1,10 @@
+import re
+
 import pytest
 
-from analyst import guardrails, warehouse
+from analyst import guardrails, seed, warehouse
+
+FULL_NAME = re.compile(rf"\b({'|'.join(seed.FIRST)}) ({'|'.join(seed.LAST)})\b")      # how the seeded customers are named
 
 SAFE = [
     "SELECT channel, SUM(net_revenue) FROM analytics.fct_sales GROUP BY 1",
@@ -34,6 +38,16 @@ UNSAFE = [
     "SELECT * FROM glob('*')",
     "SELECT email FROM analytics.dim_customer",
     "SELECT c.full_name FROM analytics.dim_customer c",
+    # a CTE declared somewhere else must not excuse a name the database would resolve to its own catalog
+    "SELECT name FROM sqlite_master WHERE (SELECT x FROM (WITH sqlite_master AS (SELECT 1 AS x) SELECT x FROM sqlite_master)) = 1",
+    "WITH sqlite_master AS (SELECT * FROM sqlite_master) SELECT name FROM sqlite_master",
+    "WITH a AS (SELECT * FROM sqlite_master), sqlite_master AS (SELECT 1 AS name) SELECT * FROM a",
+    "SELECT (WITH duckdb_tables AS (SELECT 1 AS x) SELECT x FROM duckdb_tables) AS x, t.* FROM duckdb_tables t",
+    "WITH RECURSIVE sqlite_master AS (SELECT name FROM sqlite_master UNION ALL SELECT 'x' WHERE false) SELECT * FROM sqlite_master",
+    'WITH "other" AS (SELECT 1) SELECT * FROM "sqlite_master"',
+    "SELECT * FROM (SHOW TABLES)",
+    "SELECT * FROM (DESCRIBE analytics.dim_store)",
+    "SELECT * FROM (SUMMARIZE analytics.dim_store)",
 ]
 
 
@@ -47,6 +61,37 @@ def test_read_queries_run(sql, db):
 def test_unsafe_queries_never_reach_the_database(sql):
     with pytest.raises((guardrails.Blocked, guardrails.Invalid)):
         guardrails.check(sql)
+
+
+@pytest.mark.parametrize("sql", [
+    "WITH a AS (SELECT region FROM analytics.dim_store), b AS (SELECT * FROM a) SELECT * FROM b",
+    "WITH a AS (SELECT region FROM analytics.dim_store) SELECT * FROM (SELECT * FROM a) AS inner_query",
+    "WITH a AS (SELECT region FROM analytics.dim_store) SELECT * FROM a UNION SELECT * FROM a",
+    "SELECT * FROM (WITH a AS (SELECT region FROM analytics.dim_store) SELECT * FROM a) AS q",
+    "WITH a AS (SELECT region FROM analytics.dim_store) SELECT (SELECT COUNT(*) FROM a) AS n",
+    "WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 3) SELECT * FROM n",
+])
+def test_ordinary_ctes_still_work(sql, db):
+    columns, rows = warehouse.run(guardrails.check(sql), db)
+    assert columns and rows
+
+
+@pytest.mark.parametrize("sql, expected", [
+    ("SELECT 'inf'::DOUBLE AS x", None),
+    ("SELECT '-inf'::DOUBLE AS x", None),
+    ("SELECT 'nan'::DOUBLE AS x", None),
+])
+def test_numbers_that_cannot_be_shown_are_left_empty(sql, expected, db):
+    assert warehouse.run(guardrails.check(sql), db)[1][0][0] is expected
+
+
+@pytest.mark.parametrize("sql", [
+    "SELECT list(product_name) AS x FROM analytics.dim_product CROSS JOIN analytics.dim_store",
+    "SELECT {'names': list(product_name)} AS x FROM analytics.dim_product CROSS JOIN analytics.dim_store",
+])
+def test_nested_values_are_cut_off_too(sql, db):
+    value = warehouse.run(sql, db)[1][0][0]
+    assert isinstance(value, str) and len(value) == warehouse.MAX_CELL
 
 
 def test_unknown_table_can_be_repaired():
@@ -85,7 +130,7 @@ SNEAKY = [
 def test_personal_data_cannot_be_reached_by_any_route(sql, db):
     _, rows = warehouse.run(guardrails.check(sql), db)
     text = str(rows)
-    assert "@example.com" not in text and "Customer 1" not in text
+    assert "@example.com" not in text and not FULL_NAME.search(text)
 
 
 def test_serving_database_holds_only_published_data(db):

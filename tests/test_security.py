@@ -2,7 +2,7 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from analyst import agent, api, overview, present
+from analyst import agent, api, overview, present, warehouse
 from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 from conftest import FakeModel
@@ -23,6 +23,24 @@ def test_the_key_is_only_sent_over_https(address, monkeypatch):
     monkeypatch.setenv("OPENAI_BASE_URL", address)
     with pytest.raises(ModelError):
         OpenAIModel("m")
+
+
+@pytest.mark.parametrize("body", [b"<html>gateway</html>", b'{"choices": []}', b'{"error": "x"}', b"[]"])
+def test_an_unreadable_model_reply_is_a_plain_error(body, monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, content=body))
+    with pytest.raises(ModelError):
+        OpenAIModel("m", client=httpx.Client(transport=transport)).complete([{"role": "user", "content": "q"}])
+
+
+def test_api_without_a_key_says_so(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("SEQUELAGENT_API_TOKEN", raising=False)
+    monkeypatch.setattr(api, "load_env", lambda: None)
+    monkeypatch.setattr(api, "limiter", RateLimit(calls=5, seconds=60))
+    api.get_model.cache_clear()
+    response = TestClient(api.app).post("/ask", json={"question": "q"})
+    assert response.status_code == 503 and "OPENAI_API_KEY" in response.json()["detail"]
 
 
 def test_rate_limit_window():
@@ -62,7 +80,6 @@ def test_model_text_cannot_inject_markup_into_the_screen(db, monkeypatch):
 
     from streamlit.testing.v1 import AppTest
 
-    from analyst import warehouse
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(warehouse, "DB_PATH", db)
     evil = "CANNOT_ANSWER: x\n\n![t](https://evil.example/?q=1) <img src=x onerror=alert(1)>"
@@ -71,6 +88,12 @@ def test_model_text_cannot_inject_markup_into_the_screen(db, monkeypatch):
     screen.run()
     assert not screen.exception
     assert not any("evil.example" in m.value for m in screen.markdown)
+
+
+def test_nobody_orders_before_signing_up(db):
+    _, rows = warehouse.run("SELECT COUNT(*) FROM analytics.fct_sales f JOIN analytics.dim_customer c USING (customer_id) "
+                            "WHERE f.order_date < c.signup_date", db)
+    assert rows == [(0,)]
 
 
 def test_headline_numbers(db):

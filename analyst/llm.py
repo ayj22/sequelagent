@@ -63,10 +63,13 @@ class OpenAIModel:
                     log.warning("model API answered %s", r.status_code)
                     raise ModelError(f"The model service refused the request (status {r.status_code}). Check the API key and model name.")
             time.sleep(2 ** attempt)
-        data = r.json()
-        usage = data.get("usage") or {}
-        reply = Reply(data["choices"][0]["message"]["content"] or "", usage.get("prompt_tokens", 0),
-                      usage.get("completion_tokens", 0), time.monotonic() - started)
+        try:
+            data = r.json()
+            text = data["choices"][0]["message"]["content"] or ""
+            usage = data.get("usage") or {}
+        except (ValueError, LookupError, TypeError, AttributeError) as exc:
+            raise ModelError("The model service sent a reply that could not be read.") from exc
+        reply = Reply(text, usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0), time.monotonic() - started)
         if self.record_to:
             saved = json.loads(self.record_to.read_text()) if self.record_to.exists() else {}
             saved[key_for(messages)] = reply.__dict__

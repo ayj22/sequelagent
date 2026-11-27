@@ -32,7 +32,7 @@ def headline(db_path=None) -> dict:
 
     def change(name: str, other: str):
         before = periods.get(other, {}).get(name)
-        if before in (None, 0):
+        if before in (None, 0) or now[name] is None:
             return None
         if name.endswith("_pct"):
             return float(now[name]) - float(before)
