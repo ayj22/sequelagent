@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.15-slim
 WORKDIR /app
 ENV DBT_SEND_ANONYMOUS_USAGE_STATS=false PYTHONDONTWRITEBYTECODE=1
 COPY requirements.txt .
