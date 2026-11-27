@@ -9,4 +9,4 @@ streamlit>=1.40
 dbt-core>=1.11,<1.12
 dbt-duckdb>=1.10
 sqlparse>=0.6.1        # earlier releases have published vulnerabilities
-altair>=5
+altair>=6.3.0
