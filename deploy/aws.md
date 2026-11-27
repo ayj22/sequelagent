@@ -1,6 +1,6 @@
 # Running on AWS (ECS on Fargate)
 
-These steps have **not** been run against a live AWS account. The Docker image has not been built or run yet.
+These steps have **not** been run against a live AWS account. The Docker image itself is built and health-checked in CI.
 
 1. Push the image to ECR:
    ```bash

@@ -81,6 +81,8 @@ make replay   # free: re-scores the recorded replies
   order checked only for rankings).
 - **10 hostile or unanswerable requests** ([`adversarial.yaml`](evals/adversarial.yaml)): destructive commands, requests for
   personal data, prompt injection, file access, questions the data cannot answer.
+- **CI** builds the data, runs the dbt tests and unit tests, replays the recorded replies and fails below 90% accuracy or on any
+  unsafe answer, then builds and health-checks the Docker image.
 
 ### What the numbers do and don't mean
 
@@ -97,7 +99,7 @@ Results from the three live runs made while building:
 - Model output varies between runs. A single 100% is not a guarantee.
 - The 30 questions cover one small, well-documented schema, and the same author wrote the questions and the semantic layer.
   Expect lower accuracy on a large, messy warehouse.
-- Replay (`make replay`) catches regressions in data, metrics, guardrails and scoring. It does **not** detect a change in model behaviour or
+- Replay in CI catches regressions in data, metrics, guardrails and scoring. It does **not** detect a change in model behaviour or
   the effect of editing the prompt; run `make eval` for that.
 
 ## Run it
@@ -125,8 +127,6 @@ Docker:
 docker build -t querysherpa .
 docker run -p 8501:8501 -e OPENAI_API_KEY querysherpa
 ```
-
-The Docker image has not been built or run yet.
 
 AWS notes: [deploy/aws.md](deploy/aws.md) (written, not yet run against a live account).
 
