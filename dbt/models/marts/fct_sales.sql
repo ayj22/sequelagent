@@ -1,4 +1,4 @@
--- one row per order line, with the order's date, channel and store
+-- retail: one row per order line, with the order's date, channel and store
 select
     i.order_item_id,
     i.order_id,
@@ -7,6 +7,7 @@ select
     o.store_id,
     o.customer_id,
     i.product_id,
+    i.size,
     i.quantity,
     i.is_returned,
     round(i.quantity * i.unit_price, 2) as gross_revenue,

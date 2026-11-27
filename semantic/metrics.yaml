@@ -1,8 +1,19 @@
 # The semantic layer: what the model is told about the data, and the single definition of every metric.
-data_range: "Orders run from 2025-01-01 to 2026-09-30. The latest complete month is September 2026 and the latest complete quarter is 2026 Q3."
+business: "a fictional footwear company that sells its own shoe brands through retail (stores and website) and wholesale (to other retailers)"
+data_range: "Data runs from 2025-01-01 to 2026-09-30. The latest complete month is September 2026 and the latest complete quarter is 2026 Q3."
 tables:
+  fct_channel_sales:
+    grain: one row per day, channel and product, covering retail AND wholesale
+    columns:
+      sale_date: DATE (retail order date, or wholesale ship date)
+      business: "'retail' or 'wholesale'"
+      channel: "'store', 'online', 'bopis' or 'wholesale'"
+      product_id: joins dim_product
+      units: pairs sold (retail, excluding returns) or shipped (wholesale)
+      net_revenue: revenue after discounts, allowances and returns
+      gross_margin: net revenue minus product cost
   fct_sales:
-    grain: one row per order line
+    grain: one row per retail order line
     columns:
       order_item_id: line id
       order_id: order id (several lines can share it)
@@ -11,47 +22,75 @@ tables:
       store_id: store for 'store' and 'bopis' orders; NULL for online orders
       customer_id: joins dim_customer
       product_id: joins dim_product
-      quantity: units on the line
+      size: "shoe size as text, for example '10' or '2Y'; sizes only compare within one gender"
+      quantity: pairs on the line
       is_returned: BOOLEAN, true when the line was returned
       gross_revenue: list price times quantity, before discount and returns
       discount_amount: discount given
       net_revenue: revenue after discount; 0 for returned lines
       gross_margin: net revenue minus product cost; 0 for returned lines
+  fct_wholesale:
+    grain: one row per wholesale order line
+    columns:
+      order_line_id: line id
+      order_id: wholesale order id (its own numbering, unrelated to retail orders)
+      account_id: joins dim_account
+      product_id: joins dim_product
+      order_date: DATE the account placed the order
+      requested_ship_date: DATE the account asked for
+      ship_date: DATE it shipped; wholesale revenue is counted on this date
+      units_ordered: pairs ordered
+      units_shipped: pairs shipped (can be fewer than ordered)
+      gross_revenue: shipped pairs at wholesale price
+      allowance_amount: price allowance given to the account
+      net_revenue: gross revenue minus allowance
+      gross_margin: net revenue minus product cost
+  dim_account:
+    grain: one row per wholesale account (a business customer)
+    columns: {account_id: id, account_name: text, account_type: "'department store', 'specialty', 'online marketplace', 'off-price' or 'independent'", region: "'Northeast', 'South', 'Midwest' or 'West'", state: two-letter code, customer_since: DATE}
   dim_store:
-    grain: one row per store
+    grain: one row per company-owned store
     columns: {store_id: id, store_name: 'neighbourhood or centre name, e.g. SoHo', city: text, region: "'Northeast', 'South', 'Midwest' or 'West'", state: two-letter code, store_format: "'mall', 'street' or 'outlet'", opened_date: DATE}
   dim_product:
-    grain: one row per product
-    columns: {product_id: id, product_name: 'brand, model and colour', category: "'Footwear', 'Apparel', 'Accessories' or 'Outdoor'", subcategory: text, brand: 'for example Ridgeline, Northfield or Summitcraft', list_price: price, unit_cost: cost}
+    grain: one row per product (a style in one colour)
+    columns: {product_id: id, product_name: 'brand, style, gender and colour', category: "'Athletic', 'Casual', 'Dress', 'Boots', 'Sandals' or 'Kids'", brand: "'Kestrel', 'Harbor Lane', 'Pike & Rowe', 'Ridgeline', 'Saltmarsh' or 'Tadpole'", gender: "'Men', 'Women' or 'Kids'", msrp: retail list price, wholesale_price: price to accounts, unit_cost: cost}
   dim_customer:
-    grain: one row per customer
+    grain: one row per retail customer
     columns: {customer_id: id, state: two-letter code, segment: "'value', 'core' or 'premium'", loyalty_tier: "'none', 'silver' or 'gold'", signup_date: DATE}
   fct_inventory:
-    grain: one row per store, product and month (a snapshot, so never add months together)
-    columns: {snapshot_month: first day of the month, store_id: joins dim_store, product_id: joins dim_product, on_hand_units: units in stock, reorder_point: restock threshold}
+    grain: one row per store, product, size and month (a month-end snapshot, so never add months of stock together)
+    columns: {snapshot_month: first day of the month, store_id: joins dim_store, product_id: joins dim_product, size: shoe size as text, on_hand_units: pairs in stock at month end, reorder_point: restock threshold, units_sold: pairs that store sold in the month, weekly_units_sold: average pairs sold per week in the month}
   fct_marketing:
-    grain: one row per week and marketing channel
+    grain: one row per week and marketing channel (retail marketing)
     columns: {week_start: Monday of the week, marketing_channel: "'search', 'social', 'email', 'display' or 'affiliate'", spend: money spent, attributed_revenue: revenue attributed to the spend}
 pii_columns: [full_name, email]   # never published; also refused by name so the user gets a clear reason
 metrics:
   net_revenue: SUM(net_revenue)
   gross_margin: SUM(gross_margin)
   gross_margin_pct: SUM(gross_margin) / NULLIF(SUM(net_revenue), 0) * 100
-  orders: COUNT(DISTINCT order_id)
-  units_sold: SUM(quantity) FILTER (WHERE NOT is_returned)
-  average_order_value: SUM(net_revenue) / NULLIF(COUNT(DISTINCT order_id), 0)
-  return_rate_pct: AVG(CASE WHEN is_returned THEN 1.0 ELSE 0 END) * 100   # share of order lines returned
-  discount_rate_pct: SUM(discount_amount) / NULLIF(SUM(gross_revenue), 0) * 100
-  roas: SUM(attributed_revenue) / NULLIF(SUM(spend), 0)
-  active_customers: COUNT(DISTINCT customer_id)
+  retail_orders: COUNT(DISTINCT order_id) on fct_sales
+  retail_units_sold: SUM(quantity) FILTER (WHERE NOT is_returned) on fct_sales
+  average_order_value: SUM(net_revenue) / NULLIF(COUNT(DISTINCT order_id), 0) on fct_sales
+  return_rate_pct: AVG(CASE WHEN is_returned THEN 1.0 ELSE 0 END) * 100 on fct_sales (share of order lines returned)
+  discount_rate_pct: SUM(discount_amount) / NULLIF(SUM(gross_revenue), 0) * 100 on fct_sales
+  active_customers: COUNT(DISTINCT customer_id) on fct_sales
+  revenue_per_customer: SUM(net_revenue) / NULLIF(COUNT(DISTINCT customer_id), 0) on fct_sales
+  repeat_customer_rate_pct: share of customers active in the period who placed 2 or more orders in it, times 100
+  fill_rate_pct: SUM(units_shipped) / NULLIF(SUM(units_ordered), 0) * 100 on fct_wholesale
+  on_time_rate_pct: AVG(CASE WHEN ship_date <= requested_ship_date THEN 1.0 ELSE 0 END) * 100 on fct_wholesale (share of lines)
+  sell_through_pct: SUM(units_sold) * 100.0 / NULLIF(SUM(units_sold) + SUM(on_hand_units), 0) on fct_inventory, one month
+  weeks_of_supply: SUM(on_hand_units) / NULLIF(SUM(weekly_units_sold), 0) on fct_inventory, one month
+  roas: SUM(attributed_revenue) / NULLIF(SUM(spend), 0) on fct_marketing
 rules:
   - "'Revenue' or 'sales' means net_revenue unless the question says gross."
-  - "'Region' belongs to stores: online orders have no region, so leave them out of any breakdown by region (inner join to dim_store)."
-  - Stock questions use the latest snapshot_month unless a month is named. A product is below its reorder point when on_hand_units < reorder_point.
-  - Round money and percentages to 2 decimals.
+  - "For the whole company, or to compare or combine retail and wholesale, use fct_channel_sales. For retail detail (orders, customers, stores, sizes sold, returns, discounts) use fct_sales. For wholesale detail (accounts, pairs ordered, fill rate, shipping) use fct_wholesale."
+  - Every wholesale measure for a period (revenue, fill rate, on-time rate, pairs short) is dated by ship_date, unless the question asks about orders placed.
+  - "A 'region' breakdown uses stores for retail and accounts for wholesale. Online orders have no region, so leave them out of retail breakdowns by region (inner join to dim_store)."
+  - Stock, sell-through and weeks-of-supply questions use the latest snapshot_month unless a month is named. A store, product and size is below its reorder point when on_hand_units < reorder_point.
+  - Round money, percentages and weeks of supply to 2 decimals.
   - Return only the columns the question asks for, plus the label columns needed to read them.
 examples:
-  - question: What was net revenue by channel in 2025?
+  - question: What was retail net revenue by channel in 2025?
     sql: |
       SELECT channel, ROUND(SUM(net_revenue), 2) AS net_revenue
       FROM analytics.fct_sales

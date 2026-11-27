@@ -1,3 +1,4 @@
+import re
 import sys
 from pathlib import Path
 
@@ -19,10 +20,13 @@ def db(tmp_path_factory):
     root = Path(__file__).resolve().parent.parent / "dbt" / "models"
     con = duckdb.connect(str(path))
     con.execute("CREATE SCHEMA analytics")
-    for name in ["dim_store", "dim_product", "dim_customer", "fct_sales", "fct_inventory", "fct_marketing"]:
+    # in dependency order: some marts are built from other marts
+    marts = ["dim_store", "dim_product", "dim_customer", "dim_account", "fct_sales", "fct_wholesale", "fct_channel_sales",
+             "fct_inventory", "fct_marketing"]
+    for name in marts:
         sql = (root / "marts" / f"{name}.sql").read_text()
-        for table in ["stores", "products", "customers", "orders", "order_items", "inventory", "marketing_spend"]:
-            sql = sql.replace("{{ ref('stg_" + table + "') }}", "raw." + table)
+        sql = re.sub(r"\{\{ ref\('stg_(\w+)'\) \}\}", r"raw.\1", sql)
+        sql = re.sub(r"\{\{ ref\('(\w+)'\) \}\}", r"analytics.\1", sql)
         con.execute(f"CREATE TABLE analytics.{name} AS {sql}")
     con.close()
     serving = folder / "serving.duckdb"

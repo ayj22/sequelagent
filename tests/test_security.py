@@ -77,5 +77,5 @@ def test_headline_numbers(db):
     data = overview.headline(db)
     assert data["month"].isoformat() == "2026-09-01"
     values = {m["name"]: m for m in data["metrics"]}
-    assert values["orders"]["value"] > 1000 and values["net_revenue"]["vs_year_ago"] is not None
-    assert 20 < values["gross_margin_pct"]["value"] < 75
+    assert values["retail_orders"]["value"] > 1000 and values["net_revenue"]["vs_year_ago"] is not None
+    assert 20 < values["gross_margin_pct"]["value"] < 75 and 70 < values["wholesale_fill_rate_pct"]["value"] <= 100

@@ -18,9 +18,39 @@ models:
           - accepted_values: {values: [store, online, bopis]}
       - name: net_revenue
         tests: [not_null]
+  - name: fct_wholesale
+    columns:
+      - name: order_line_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests:
+          - relationships: {to: ref('dim_account'), field: account_id}
+      - name: product_id
+        tests:
+          - relationships: {to: ref('dim_product'), field: product_id}
+      - name: net_revenue
+        tests: [not_null]
+  - name: fct_channel_sales
+    columns:
+      - name: business
+        tests:
+          - accepted_values: {values: [retail, wholesale]}
+      - name: net_revenue
+        tests: [not_null]
+  - name: fct_inventory
+    columns:
+      - name: store_id
+        tests:
+          - relationships: {to: ref('dim_store'), field: store_id}
+      - name: weekly_units_sold
+        tests: [not_null]
   - name: dim_store
     columns:
       - name: store_id
+        tests: [unique, not_null]
+  - name: dim_account
+    columns:
+      - name: account_id
         tests: [unique, not_null]
   - name: dim_product
     columns:

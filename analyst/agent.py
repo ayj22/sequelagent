@@ -68,6 +68,7 @@ def ask(question: str, model, db_path=None, max_repairs: int = MAX_REPAIRS, on_s
             messages += [{"role": "assistant", "content": reply.text},
                          {"role": "user", "content": f"That query failed: {exc}\nReply with a corrected query in a ```sql block."}]
             continue
+        rows = present.in_size_order(columns, rows, answer.sql)
         answer.status, answer.columns, answer.rows = "answered", columns, [list(r) for r in rows]
         answer.chart = present.chart_for(columns, rows)
         answer.message = present.summarize(columns, rows)

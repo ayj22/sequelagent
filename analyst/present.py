@@ -5,6 +5,9 @@ import re
 from datetime import date, datetime
 from decimal import Decimal
 
+import sqlglot
+from sqlglot import exp
+
 
 def _is_number(v) -> bool:
     return isinstance(v, (int, float, Decimal)) and not isinstance(v, bool)
@@ -74,6 +77,31 @@ def spreadsheet_safe(value):
     return value
 
 
+def _size_key(value) -> tuple:
+    """Shoe sizes in the order a person expects: kids' C sizes, then Y sizes, then adult sizes, each by number."""
+    found = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([CY]?)\s*", str(value), re.I)
+    if not found:
+        return (3, 0.0, str(value))
+    return ({"C": 0, "Y": 1, "": 2}[found.group(2).upper()], float(found.group(1)), "")
+
+
+def in_size_order(columns: list[str], rows: list, sql: str) -> list:
+    """Sizes are text, so a query that sorts by size puts 10 before 8. Rows are re-ordered only when the query sorted by size
+    (ascending) or did not sort at all; a ranking by anything else is left as the query returned it."""
+    at = next((i for i, name in enumerate(columns) if name.lower() in ("size", "shoe_size")), None)
+    if at is None:
+        return rows
+    order = sqlglot.parse_one(sql, read="duckdb").args.get("order")
+    if order is not None:
+        first = order.expressions[0]
+        key = first.this
+        by_position = isinstance(key, exp.Literal) and not key.is_string and key.this == str(at + 1)
+        by_name = isinstance(key, exp.Column) and key.name.lower() == columns[at].lower()
+        if first.args.get("desc") or not (by_position or by_name):
+            return rows
+    return sorted(rows, key=lambda r: _size_key(r[at]))
+
+
 def chart_for(columns: list[str], rows: list[tuple]) -> dict:
     """{"type": "metric" | "line" | "bar" | "table", "x": column, "y": column}"""
     if not rows:
@@ -102,6 +130,7 @@ def summarize(columns: list[str], rows: list[tuple]) -> str:
         if values:
             top, low = max(values, key=lambda r: r[y]), min(values, key=lambda r: r[y])
             name = label(columns[y])
-            return (f"{name} is highest for {show(top[x], columns[x])} at {show(top[y], columns[y])} "
-                    f"and lowest for {show(low[x], columns[x])} at {show(low[y], columns[y])}.")
+            prefix = "size " if columns[x].lower() in ("size", "shoe_size") else ""          # "size 10", not a bare "10"
+            return (f"{name} is highest for {prefix}{show(top[x], columns[x])} at {show(top[y], columns[y])} "
+                    f"and lowest for {prefix}{show(low[x], columns[x])} at {show(low[y], columns[y])}.")
     return f"{len(rows)} rows. First: " + ", ".join(show(v, c) for c, v in zip(columns, rows[0])) + "."

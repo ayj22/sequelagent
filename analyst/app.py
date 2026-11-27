@@ -15,15 +15,15 @@ from analyst.config import ROOT, load_env, model_name
 from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 
-EXAMPLES = [("💰", "Revenue", "What was net revenue by region last quarter?"),
-            ("📈", "Trend", "Show monthly net revenue in 2026"),
-            ("🏷️", "Margin", "Which 5 brands had the highest gross margin percentage this year?"),
-            ("↩️", "Returns", "Compare return rate by channel"),
-            ("📦", "Inventory", "How many units are on hand right now?"),
+EXAMPLES = [("💰", "Channels", "Compare retail and wholesale revenue and margin % in 2026"),
+            ("📈", "Trend", "Show monthly company net revenue in 2026"),
+            ("🏬", "Wholesale", "Which 5 wholesale accounts had the highest net revenue in 2026?"),
+            ("👟", "Sizes", "Weeks of supply by men's shoe size right now"),
+            ("📦", "Fill rate", "What was the wholesale fill rate by month in 2026?"),
             ("🛡️", "Safety test", "Delete all orders from 2025")]
 STEPS = {"writing": "🧠  Planning the analysis and writing SQL", "checking": "🛡️  Reviewing the query against safety rules",
          "running": "⚡  Querying the warehouse", "repairing": "🔧  That failed: correcting the query"}
-COMPANY = "Cedar Ridge Outfitters"
+COMPANY = "Northgate Footwear Co."
 ACCENT = "#4F46E5"
 
 STYLE = """
@@ -108,9 +108,9 @@ def header() -> None:
 def sidebar() -> None:
     with st.sidebar:
         st.markdown("## 🛡️ SequelAgent")
-        st.markdown("**Governed AI Analyst Agent**")
+        st.markdown("**Governed AI Analyst Agent**  \nfor footwear retail and wholesale")
         st.caption("Ask in plain English. It writes the query, checks it is safe, runs it read-only and shows its work. "
-                   "Demo company with fictional data, Jan 2025 to Sep 2026.")
+                   "Demo footwear company, fictional data, Jan 2025 to Sep 2026.")
         score = ROOT / "evals" / "results" / "latest.json"
         if score.exists():
             s = json.loads(score.read_text())
@@ -119,7 +119,7 @@ def sidebar() -> None:
             left.metric("Correct", f"{s['correct']}/{s['questions']}", help=f"Recorded evaluation run, {s['model']}")
             right.metric("Handled safely", f"{s['attacks_stopped']}/{s['attacks']}", help="Hostile or unanswerable requests")
         st.markdown("#### You can ask about")
-        st.markdown("Sales and margin · Orders and returns · Customers · Stores · Inventory · Marketing")
+        st.markdown("Retail sales · Wholesale accounts · Margin · Inventory and sizes · Customers · Marketing")
         with st.expander("How metrics are defined"):
             for name, formula in semantic.layer()["metrics"].items():
                 st.markdown(f"**{present.label(name)}**")
@@ -154,7 +154,8 @@ def draw(a: agent.Answer) -> None:
             marks = marks + base.mark_text(dy=-12, fontSize=13, fontWeight="bold", color="#14162B").encode(text="shown:N")
         st.altair_chart(marks.properties(height=340).configure_view(strokeWidth=0), width="stretch")
     table = pd.DataFrame({present.label(c): [present.show(r[i], c) for r in a.rows] for i, c in enumerate(a.columns)})
-    with st.expander(f"Table ({len(table)} rows)", expanded=kind == "table"):
+    # the chart shows one measure, so when the answer has more, the table is open
+    with st.expander(f"Table ({len(table)} rows)", expanded=kind == "table" or len(a.columns) > 2):
         st.dataframe(table, hide_index=True, width="stretch")
         safe = frame.rename(columns=present.spreadsheet_safe).map(present.spreadsheet_safe)
         st.download_button("Download CSV", safe.to_csv(index=False), "answer.csv", "text/csv")
@@ -168,7 +169,7 @@ def show_answer(a: agent.Answer) -> None:
         draw(a)
     elif a.status == "refused":
         card("warn", "Not answered", a.message)
-        st.caption("Nothing was run. Try a question about sales, orders, customers, stores, inventory or marketing.")
+        st.caption("Nothing was run. Try a question about retail or wholesale sales, inventory, customers or marketing.")
     elif a.status == "blocked":
         card("stop", "Blocked by a safety check", a.message)
         st.caption("The query never reached the database.")
@@ -191,7 +192,7 @@ header()
 
 with st.form("ask", clear_on_submit=False, border=True):
     left, right = st.columns([6, 1], vertical_alignment="bottom")
-    left.text_input("Ask your AI analyst", key="question", placeholder="e.g. Average order value by loyalty tier in 2026",
+    left.text_input("Ask your AI analyst", key="question", placeholder="e.g. Sell-through by brand in August 2026",
                     max_chars=agent.MAX_QUESTION)
     if right.form_submit_button("Ask →", type="primary", width="stretch"):
         st.session_state.pending = st.session_state.question

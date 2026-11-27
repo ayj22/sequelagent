@@ -23,7 +23,7 @@ def pii_columns() -> set[str]:
 
 def system_prompt() -> str:
     d = layer()
-    lines = ["You are a careful analytics engineer. Write one DuckDB SQL query that answers the question about a retail business.",
+    lines = [f"You are a careful analytics engineer. Write one DuckDB SQL query that answers a question about {d['business']}.",
              "", d["data_range"], "", f"Tables (always write them as {SCHEMA}.<table>):"]
     for name, t in d["tables"].items():
         lines.append(f"- {SCHEMA}.{name} ({t['grain']})")

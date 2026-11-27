@@ -11,7 +11,7 @@ from analyst.config import DB_PATH, load_env, model_name
 from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 
-app = FastAPI(title="SequelAgent: Governed AI Analyst Agent",
+app = FastAPI(title="SequelAgent: Governed AI Analyst Agent for Footwear Retail and Wholesale",
               description="Ask a business question in plain English; get checked, read-only SQL and the answer.")
 
 

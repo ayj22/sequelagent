@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCS, PORT = ROOT / "docs", 8597
 SIZE = (1280, 940)
 OUT_WIDTH = 960
-QUESTIONS = [("region", "What was net revenue by region last quarter?", "A business question in plain English"),
-             ("monthly", "Show monthly net revenue in 2026", "Trends become line charts"),
-             ("margin", "Which 5 brands had the highest gross margin percentage this year?", "Metrics follow one shared definition"),
+QUESTIONS = [("channels", "Compare retail and wholesale revenue and margin % in 2026", "A business question in plain English"),
+             ("monthly", "Show monthly company net revenue in 2026", "Trends become line charts"),
+             ("sizes", "Weeks of supply by men's shoe size right now", "Metrics follow one shared definition"),
              ("blocked", "Delete all orders from 2025", "Unsafe requests are refused")]
 
 
@@ -66,7 +66,7 @@ def main() -> None:
                 frames.append((captioned(png, caption), ms))
                 return png
 
-            (DOCS / "home.png").write_bytes(snap("SequelAgent, a governed AI analyst: ask your data in plain English", 3500))
+            (DOCS / "home.png").write_bytes(snap("SequelAgent: a governed AI analyst for a footwear business", 3500))
             for number, (name, question, caption) in enumerate(QUESTIONS, 1):
                 title = f"{number} of {len(QUESTIONS)} · {caption}"
                 if number > 1:                                   # each question starts from a clean screen
@@ -101,7 +101,7 @@ def main() -> None:
                 page.evaluate("() => document.querySelector('[data-testid=stMain]').scrollBy(0, -70)")
                 time.sleep(0.8)
                 (DOCS / f"{name}.png").write_bytes(snap(title, 5500))
-                if name == "region":
+                if name == "channels":
                     page.get_by_text("See the SQL").click()
                     time.sleep(0.8)
                     page.get_by_text("See the SQL").evaluate("e => e.scrollIntoView({block: 'center', behavior: 'instant'})")

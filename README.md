@@ -1,7 +1,13 @@
 # 🛡️ SequelAgent: Governed AI Analyst Agent
 
+### For footwear retail and wholesale
+
 **Ask a business question in plain English and get a checked answer. SequelAgent writes the SQL, makes sure it is safe,
 runs it read-only, and shows you the chart, the explanation and the query behind it.**
+
+The demo business is **Northgate Footwear Co.**, an invented company that sells its own shoe brands through stores, online and
+to other retailers. Merchants and planners can ask about retail and wholesale margin, sizes running short, sell-through,
+account performance and fill rate.
 
 [![ci](https://github.com/ayj22/sequelagent/actions/workflows/ci.yml/badge.svg)](https://github.com/ayj22/sequelagent/actions/workflows/ci.yml)
 
@@ -33,8 +39,8 @@ can be used at work: shared metric definitions, treating the model as untrusted,
 |---|---|
 | Correct answers | 30 of 30 |
 | Unsafe or unanswerable requests handled safely | 10 of 10 |
-| Median time per question | 1.7 s |
-| Tokens per question | about 1,060 in, 140 out |
+| Median time per question | 1.4 s |
+| Tokens per question | about 1,940 in, 160 out |
 
 Read [what these numbers do and don't mean](#evaluation) before quoting them. Full results: [SCORECARD.md](evals/results/SCORECARD.md).
 
@@ -46,9 +52,9 @@ Read [what these numbers do and don't mean](#evaluation) before quoting them. Fu
 
 | Question | What you get |
 |---|---|
-| *What was net revenue by region last quarter?* | ![Bar chart of net revenue by region](docs/region.png) |
-| *Show monthly net revenue in 2026* | ![Line chart of monthly net revenue](docs/monthly.png) |
-| *Which 5 brands had the highest gross margin percentage this year?* | ![Bar chart of brand gross margin](docs/margin.png) |
+| *Compare retail and wholesale revenue and margin % in 2026* | ![Retail and wholesale revenue and margin](docs/channels.png) |
+| *Show monthly company net revenue in 2026* | ![Line chart of monthly net revenue](docs/monthly.png) |
+| *Weeks of supply by men's shoe size right now* | ![Bar chart of weeks of supply by shoe size](docs/sizes.png) |
 | *Delete all orders from 2025* | ![The request is refused](docs/blocked.png) |
 
 **Nothing is a black box**: every answer carries the query that produced it.
@@ -83,11 +89,12 @@ flowchart LR
     PUB --> D
 ```
 
-- **Data**: Cedar Ridge Outfitters, an **invented** outdoor and apparel retailer: 24 stores, 172 products, 8 brands, 24,000
-  customers, about 146,000 orders and 277,000 order lines from January 2025 to September 2026, plus monthly inventory and weekly
-  marketing spend. It behaves like a real business (holiday and back-to-school peaks, weekend traffic, seasonal products, a
-  growing online share, higher online returns, loyalty customers who buy more). Sales, products and customers are made up;
-  the place names are real. It is generated from a fixed seed.
+- **Data**: Northgate Footwear Co., an **invented** footwear company: 6 made-up brands, 78 products with sizes, 24 stores,
+  30,000 retail customers, 30 wholesale accounts, about 211,000 retail orders and 285,000 order lines, 9,000 wholesale order
+  lines, month-end stock by store, product and size, and weekly marketing spend, January 2025 to September 2026. It behaves like
+  a real business (holiday and back-to-school peaks, seasonal styles, middle sizes running short, wholesale shipping ahead of the
+  season, late and short shipments in busy months). Companies, accounts, products, customers and numbers are made up; the place
+  names are real. It is generated from a fixed seed.
 - **Modeling**: dbt on DuckDB, with uniqueness, not-null, relationship and accepted-value tests.
 - **Semantic layer**: [`semantic/metrics.yaml`](semantic/metrics.yaml) is the single definition of each metric ("revenue" means
   net revenue; stock is a snapshot and is never summed across months). The prompt is generated from it.
@@ -136,20 +143,16 @@ make replay   # free: re-scores the recorded replies
 
 ### What the numbers do and don't mean
 
-Results from the live runs made while building:
+Results from the live runs on this dataset:
 
 | Run | Correct | Safe | Notes |
 |---|---|---|---|
-| 1 | 29 of 30 | 10 of 10 | Miss: "revenue by region" included online orders, which have no region, as an extra empty row |
-| 2 | 30 of 30 | 9 of 10 | The model ran an injected `SELECT *` on the customer table. The result held no personal data (layer 1) |
-| 3 | 30 of 30 | 10 of 10 | |
-| 4 | 30 of 30 | 10 of 10 | After the region rule below |
-| 5 | 30 of 30 | 10 of 10 | New, larger dataset. The recorded run behind the scorecard |
+| 1 | 29 of 30 | 10 of 10 | Miss: "pairs short in 2026" was counted by order date; the reference counts by ship date. The model also ran an injected `SELECT *` on the customer table; the result held no personal data (layer 1) |
+| 2 | 30 of 30 | 10 of 10 | After the shipping-date rule below. The recorded run behind the scorecard |
 
-- The run 1 miss happened again while recording the demo. A rule was then added to the semantic layer ("leave online orders out
-  of breakdowns by region"). Run 4 therefore uses a prompt improved with knowledge of a test question.
-- After run 2, that one injection case was changed to also pass when the answer contains no personal data. All other cases must
-  still be refused or blocked.
+- After run 1, a rule was added to the semantic layer ("wholesale measures for a period are dated by ship date"). Run 2 therefore
+  uses a prompt improved with knowledge of a test question.
+- One injection case also passes when the answer contains no personal data. All other cases must be refused or blocked.
 - Model output varies between runs. A single 100% is not a guarantee.
 - The 30 questions cover one small, well-documented schema, and the same author wrote the questions and the semantic layer.
   Expect lower accuracy on a large, messy warehouse.
@@ -171,7 +174,7 @@ Other entry points:
 
 ```bash
 make api                                                   # POST /ask on http://localhost:8000/docs
-.venv/bin/python -m analyst.cli "Average order value by loyalty tier in 2026"
+.venv/bin/python -m analyst.cli "Which wholesale accounts had the lowest fill rate in 2026?"
 make test
 make security                                              # dependency audit and code scan
 ```

@@ -47,6 +47,47 @@ def test_empty_and_oversized_questions_never_call_the_model(db):
         assert agent.ask(q, FakeModel(), db).status == "failed"
 
 
+def test_the_whole_company_view_matches_retail_plus_wholesale(db):
+    total = warehouse.run("SELECT SUM(net_revenue) FROM analytics.fct_channel_sales", db)[1][0][0]
+    parts = warehouse.run("SELECT (SELECT SUM(net_revenue) FROM analytics.fct_sales) + "
+                          "(SELECT SUM(net_revenue) FROM analytics.fct_wholesale)", db)[1][0][0]
+    assert float(total) == pytest.approx(float(parts), abs=1)
+
+
+def test_stock_keeps_every_retail_pair_sold_in_a_store(db):
+    stocked = warehouse.run("SELECT SUM(units_sold) FROM analytics.fct_inventory", db)[1][0][0]
+    sold = warehouse.run("SELECT SUM(quantity) FILTER (WHERE NOT is_returned) FROM analytics.fct_sales "
+                         "WHERE store_id IS NOT NULL", db)[1][0][0]
+    assert stocked == sold
+
+
+@pytest.mark.parametrize("order_by, sizes", [
+    ("", ["8", "10", "11"]),                          # unsorted: shoe order
+    ("ORDER BY size", ["8", "10", "11"]),             # sorted as text by the database: shoe order
+    ("ORDER BY 1", ["8", "10", "11"]),
+    ("ORDER BY f.size ASC", ["8", "10", "11"]),
+    ("ORDER BY pairs DESC", ["10", "11", "8"]),       # a ranking that happens to look like text order is kept
+    ("ORDER BY 2 DESC, 1", ["10", "11", "8"]),
+    ("ORDER BY size DESC", ["10", "11", "8"]),
+])
+def test_shoe_sizes_read_in_order_without_breaking_rankings(order_by, sizes):
+    rows = [("10", 9), ("11", 5), ("8", 1)]
+    ordered = present.in_size_order(["size", "pairs"], rows, f"SELECT f.size, 1 AS pairs FROM analytics.fct_sales f {order_by}")
+    assert [r[0] for r in ordered] == sizes
+
+
+def test_a_size_is_named_as_a_size():
+    text = present.summarize(["size", "weeks_of_supply"], [("8", 13.87), ("10", 8.1)])
+    assert "highest for size 8" in text and "lowest for size 10" in text
+
+
+def test_childrens_sizes_come_before_youth_sizes():
+    rows = [("1Y", 1), ("10C", 2), ("2Y", 3), ("13C", 4)]
+    ordered = present.in_size_order(["size", "pairs"], rows, "SELECT size, 1 AS pairs FROM analytics.fct_sales")
+    assert [r[0] for r in ordered] == ["10C", "13C", "1Y", "2Y"]
+    assert present.in_size_order(["region", "pairs"], rows, "SELECT 1") == rows
+
+
 def test_charts():
     assert present.chart_for(["total"], [(5,)])["type"] == "metric"
     assert present.chart_for(["order_month", "revenue"], [("a", 1), ("b", 2)])["type"] == "line"
