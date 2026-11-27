@@ -1,15 +1,32 @@
-# 🧭 SherpAgent
+# 🛡️ SequelAgent: Governed AI Analyst Agent
 
-**An AI analyst agent for business data. Ask in plain English; it plans the analysis, writes the SQL, checks it, runs it,
-fixes its own errors and explains the answer, with a scorecard that says how often to trust it.**
+**Ask a business question in plain English and get a checked answer. SequelAgent writes the SQL, makes sure it is safe,
+runs it read-only, and shows you the chart, the explanation and the query behind it.**
 
-[![ci](https://github.com/ayj22/sherpagent/actions/workflows/ci.yml/badge.svg)](https://github.com/ayj22/sherpagent/actions/workflows/ci.yml)
+[![ci](https://github.com/ayj22/sequelagent/actions/workflows/ci.yml/badge.svg)](https://github.com/ayj22/sequelagent/actions/workflows/ci.yml)
 
-![SherpAgent demo: typed questions answered with charts and SQL, and a destructive request refused](docs/demo.gif)
+![SequelAgent demo: typed questions answered with charts and SQL, and a destructive request refused](docs/demo.gif)
 
 *A one-minute walkthrough, recorded from the running app with live model calls.*
 
-Most text-to-SQL demos stop at "the model wrote a query". SherpAgent is built around the parts that decide whether such a tool
+## What "governed" means here
+
+An AI model can write a query that is wrong or harmful, so the agent works inside fixed rules:
+
+| Rule | What it means for you |
+|---|---|
+| Shared metric definitions | The model is given one definition of each metric, such as net revenue or margin |
+| Checked before it runs | Only a single read query on approved tables is allowed |
+| Read-only data | The agent cannot change or delete anything |
+| No personal data | The database it queries holds only the published columns, without customer names or email addresses |
+| Open answers | Every answer shows its SQL |
+| Measured | A scorecard reports correct answers and how unsafe requests were handled |
+
+When a query fails, the agent reads the error and tries to repair it.
+
+## Why it exists
+
+Most text-to-SQL demos stop at "the model wrote a query". SequelAgent is built around the parts that decide whether such a tool
 can be used at work: shared metric definitions, treating the model as untrusted, and measuring accuracy and safety on every change.
 
 | | Latest run (`gpt-6-luna`) |
@@ -95,7 +112,7 @@ Around the model:
 - Text written by the model is shown as plain text, so it cannot place links or images on the screen.
 - CSV downloads neutralise spreadsheet formulas.
 - Provider error messages are never shown or logged, and the key is sent only over HTTPS.
-- The API accepts an optional shared token (`SHERPAGENT_API_TOKEN`).
+- The API accepts an optional shared token (`SEQUELAGENT_API_TOKEN`).
 - CI scans the whole git history for secrets, audits dependencies for known vulnerabilities and runs a static code scan, on
   every push and weekly. Details: [SECURITY.md](SECURITY.md).
 
@@ -162,8 +179,8 @@ make security                                              # dependency audit an
 Docker:
 
 ```bash
-docker build -t sherpagent .
-docker run -p 8501:8501 -e OPENAI_API_KEY sherpagent
+docker build -t sequelagent .
+docker run -p 8501:8501 -e OPENAI_API_KEY sequelagent
 ```
 
 AWS notes: [deploy/aws.md](deploy/aws.md) (written, not yet run against a live account).

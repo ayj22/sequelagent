@@ -66,7 +66,7 @@ def main() -> None:
                 frames.append((captioned(png, caption), ms))
                 return png
 
-            (DOCS / "home.png").write_bytes(snap("Meet SherpAgent: ask your data in plain English", 3500))
+            (DOCS / "home.png").write_bytes(snap("SequelAgent, a governed AI analyst: ask your data in plain English", 3500))
             for number, (name, question, caption) in enumerate(QUESTIONS, 1):
                 title = f"{number} of {len(QUESTIONS)} · {caption}"
                 if number > 1:                                   # each question starts from a clean screen

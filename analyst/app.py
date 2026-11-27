@@ -61,7 +61,7 @@ div[data-testid="stTextInput"] input {font-size: 1.08rem;}
 </style>
 """
 
-st.set_page_config(page_title="SherpAgent · Cedar Ridge Outfitters", page_icon="🧭", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SequelAgent · Governed AI Analyst Agent", page_icon="🛡️", layout="wide", initial_sidebar_state="expanded")
 load_env()
 st.html(STYLE)
 
@@ -102,13 +102,15 @@ def header() -> None:
                   f'<div class="n">{html.escape(present.show(m["value"], m["name"]))}</div>'
                   f'<div class="d">{change(m["vs_previous"], unit, "last month")}<br>{change(m["vs_year_ago"], unit, "last year")}</div></div>')
     st.html(f'<div class="bar"><div><div class="co">{COMPANY}</div><div class="sub">Business overview · {month}</div></div>'
-            f'<div class="pill">🧭 SherpAgent · your AI analyst</div></div><div class="kpis">{tiles}</div>')
+            f'<div class="pill">🛡️ SequelAgent · Governed AI Analyst Agent</div></div><div class="kpis">{tiles}</div>')
 
 
 def sidebar() -> None:
     with st.sidebar:
-        st.markdown("## 🧭 SherpAgent")
-        st.caption("An AI analyst that plans, writes, checks and runs the query for you. Demo company with fictional data, Jan 2025 to Sep 2026.")
+        st.markdown("## 🛡️ SequelAgent")
+        st.markdown("**Governed AI Analyst Agent**")
+        st.caption("Ask in plain English. It writes the query, checks it is safe, runs it read-only and shows its work. "
+                   "Demo company with fictional data, Jan 2025 to Sep 2026.")
         score = ROOT / "evals" / "results" / "latest.json"
         if score.exists():
             s = json.loads(score.read_text())
@@ -202,7 +204,7 @@ if question and question.strip():
         question = ""
 if question and question.strip():
     try:
-        with st.status("SherpAgent is working…", expanded=True) as status:
+        with st.status("SequelAgent is working…", expanded=True) as status:
             a = agent.ask(question, model(), on_step=lambda step: status.write(STEPS[step]))
             status.update(label="Done", state="complete", expanded=False)
         st.session_state.answer = a

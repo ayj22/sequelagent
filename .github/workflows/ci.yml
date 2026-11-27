@@ -53,9 +53,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: docker build -t sherpagent .
+      - run: docker build -t sequelagent .
       - name: The container starts and answers its health check
         run: |
-          docker run -d --name app -p 8501:8501 sherpagent
+          docker run -d --name app -p 8501:8501 sequelagent
           for i in $(seq 1 30); do curl -fs http://localhost:8501/_stcore/health && exit 0; sleep 2; done
           docker logs app; exit 1

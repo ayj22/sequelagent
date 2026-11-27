@@ -1,1 +1,1 @@
-"""SherpAgent: ask a business question, get checked SQL, a chart and a plain-language answer."""
+"""SequelAgent, a governed AI analyst agent: ask in plain English, get checked read-only SQL, a chart and an answer."""

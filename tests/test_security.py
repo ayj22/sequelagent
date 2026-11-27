@@ -34,7 +34,7 @@ def test_rate_limit_window():
 
 
 def test_api_token_and_limit(monkeypatch):
-    monkeypatch.setenv("SHERPAGENT_API_TOKEN", "s3cret")
+    monkeypatch.setenv("SEQUELAGENT_API_TOKEN", "s3cret")
     monkeypatch.setattr(api, "limiter", RateLimit(calls=1, seconds=60))
     api.app.dependency_overrides[api.get_model] = lambda: FakeModel("CANNOT_ANSWER: no")
     try:

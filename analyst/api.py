@@ -11,7 +11,8 @@ from analyst.config import DB_PATH, load_env, model_name
 from analyst.limits import RateLimit
 from analyst.llm import ModelError, OpenAIModel
 
-app = FastAPI(title="SherpAgent", description="Ask a business question; get checked SQL and the answer.")
+app = FastAPI(title="SequelAgent: Governed AI Analyst Agent",
+              description="Ask a business question in plain English; get checked, read-only SQL and the answer.")
 
 
 class Question(BaseModel):
@@ -28,8 +29,8 @@ limiter = RateLimit(calls=30, seconds=60)
 
 
 def guard(authorization: str = Header(default="")) -> None:
-    """Optional shared token (set SHERPAGENT_API_TOKEN) and a limit on how often the model can be called."""
-    token = os.environ.get("SHERPAGENT_API_TOKEN", "")
+    """Optional shared token (set SEQUELAGENT_API_TOKEN) and a limit on how often the model can be called."""
+    token = os.environ.get("SEQUELAGENT_API_TOKEN", "")
     if token and not hmac.compare_digest(authorization.encode(), f"Bearer {token}".encode()):
         raise HTTPException(401, "Missing or wrong token")
     if not limiter.allow():

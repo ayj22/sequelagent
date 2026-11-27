@@ -1,9 +1,9 @@
-name: sherpagent
+name: sequelagent
 version: "1.0.0"
-profile: sherpagent
+profile: sequelagent
 model-paths: ["models"]
 models:
-  sherpagent:
+  sequelagent:
     staging:
       +materialized: view
       +schema: staging

@@ -3,8 +3,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 # the build warehouse holds raw data; the agent only ever opens the serving copy, which holds the published tables
-WAREHOUSE_PATH = Path(os.environ.get("SHERPAGENT_WAREHOUSE", ROOT / "data" / "warehouse.duckdb"))
-DB_PATH = Path(os.environ.get("SHERPAGENT_DB", ROOT / "data" / "serving.duckdb"))
+WAREHOUSE_PATH = Path(os.environ.get("SEQUELAGENT_WAREHOUSE", ROOT / "data" / "warehouse.duckdb"))
+DB_PATH = Path(os.environ.get("SEQUELAGENT_DB", ROOT / "data" / "serving.duckdb"))
 SEMANTIC_PATH = ROOT / "semantic" / "metrics.yaml"
 SCHEMA = "analytics"
 ROW_LIMIT = 500
@@ -23,4 +23,4 @@ def load_env() -> None:
 
 
 def model_name() -> str:
-    return os.environ.get("SHERPAGENT_MODEL", "gpt-6-luna")
+    return os.environ.get("SEQUELAGENT_MODEL", "gpt-6-luna")
